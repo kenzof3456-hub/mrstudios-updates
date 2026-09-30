@@ -1,0 +1,45 @@
+{
+  "name": "jarvis",
+  "productName": "Jarvis",
+  "version": "1.0.0",
+  "description": "Jarvis — asistente de escritorio para Rabbit (Luis) en Windows",
+  "main": "main.js",
+  "author": "MRstudios",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "test": "node src/intents.test.js",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mrstudios.jarvis",
+    "productName": "Jarvis",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Jarvis-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

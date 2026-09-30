@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>J.A.R.V.I.S.</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="hud">
+      <header class="top">
+        <div class="mark">
+          <div class="ring"></div>
+          <div>
+            <h1>J.A.R.V.I.S.</h1>
+            <p class="sub">Just A Rather Very Intelligent System</p>
+          </div>
+        </div>
+        <div class="meta">
+          <span id="status-pill" class="pill">SISTEMA EN LÍNEA</span>
+          <span class="pill dim">USUARIO: RABBIT</span>
+          <span class="pill dim">HOST: WINDOWS</span>
+        </div>
+      </header>
+
+      <main id="log" class="log" aria-live="polite"></main>
+
+      <footer class="dock">
+        <div class="chips">
+          <button type="button" data-q="¿Qué hora es?">Hora</button>
+          <button type="button" data-q="¿Quién soy?">Perfil</button>
+          <button type="button" data-q="Abre el Bloc de notas">Abrir Notepad</button>
+          <button type="button" data-q="Enciende la cámara de Discord">Cámara Discord</button>
+        </div>
+        <form id="form" class="composer">
+          <textarea
+            id="input"
+            rows="2"
+            placeholder="Órdenes, Rabbit… abre apps, hora, Discord, o pregunta lo que quieras."
+            autofocus
+          ></textarea>
+          <button type="submit" id="send">Enviar</button>
+        </form>
+      </footer>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
