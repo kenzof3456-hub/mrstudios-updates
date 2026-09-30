@@ -15,23 +15,52 @@ function pickSpanishVoice() {
   );
 }
 
+function waitVoices() {
+  return new Promise((resolve) => {
+    if (!window.speechSynthesis) {
+      resolve();
+      return;
+    }
+    if (speechSynthesis.getVoices().length) {
+      resolve();
+      return;
+    }
+    const done = () => resolve();
+    speechSynthesis.addEventListener("voiceschanged", done, { once: true });
+    setTimeout(done, 1500);
+  });
+}
+
 function speakBrowser(text) {
   return new Promise((resolve) => {
     if (!window.speechSynthesis) {
       resolve(false);
       return;
     }
-    const u = new SpeechSynthesisUtterance(flatten(text));
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(ok);
+    };
+    const spoken = flatten(text);
+    const timer = setTimeout(() => finish(true), Math.min(12000, 800 + spoken.length * 80));
+    const u = new SpeechSynthesisUtterance(spoken);
     u.lang = "es-MX";
-    u.rate = 1.08;
-    u.pitch = 1.12;
+    u.rate = 1.1;
+    u.pitch = 1.15;
     u.volume = 1;
     const voice = pickSpanishVoice();
     if (voice) u.voice = voice;
-    u.onend = () => resolve(true);
-    u.onerror = () => resolve(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    u.onend = () => finish(true);
+    u.onerror = () => finish(false);
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch {
+      finish(false);
+    }
   });
 }
 
@@ -60,10 +89,16 @@ function playBase64Mp3(b64) {
 }
 
 async function speakOut(text) {
+  await waitVoices();
   const plan = await window.jarvis.speakPlan(text);
   if (plan.method === "cloud" && plan.audio) {
     const ok = await playBase64Mp3(plan.audio);
     if (ok) return "cloud";
+  }
+  const es = pickSpanishVoice();
+  if (window.__jarvisIsWindows && !es) {
+    const sapi = await window.jarvis.sapi(text);
+    if (sapi && sapi.ok) return "sapi";
   }
   const local = await speakBrowser(text);
   if (local) return "browser";
@@ -73,3 +108,4 @@ async function speakOut(text) {
 }
 
 window.speakOut = speakOut;
+window.waitVoices = waitVoices;

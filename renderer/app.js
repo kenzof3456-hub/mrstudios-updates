@@ -52,7 +52,7 @@ async function send(text, { fromVoice = false } = {}) {
   } catch (err) {
     const msg = "Fallo de enlace, Rabbit: " + err.message;
     addMsg("jarvis", msg);
-    if (fromVoice) await talk(msg);
+    await talk(msg);
   } finally {
     sendBtn.disabled = false;
     input.focus();
@@ -81,6 +81,8 @@ async function onHeard(finalText) {
   }
 }
 
+window.__jarvisHeard = onHeard;
+
 function onListenError(err) {
   if (ear) ear.textContent = "MIC: " + err;
 }
@@ -103,8 +105,10 @@ async function boot() {
   try {
     const s = await window.jarvis.status();
     if (!s.isWindows) pill.textContent = "MODO DEV · NO WINDOWS";
+    window.__jarvisIsWindows = Boolean(s.isWindows);
     if (!s.hasLlm) pill.title = "Sin OPENAI_API_KEY: TTS local (SAPI / voces del sistema) y búsqueda siguen.";
     addMsg("jarvis", s.greeting);
+    if (window.waitVoices) await window.waitVoices();
     await talk(s.greeting);
   } catch (err) {
     addMsg("jarvis", "Rabbit, no pude iniciar el núcleo: " + err.message);

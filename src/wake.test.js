@@ -6,5 +6,7 @@ assert.strictEqual(parseWake("Jarvis").rest, "");
 assert.strictEqual(parseWake("Jarvis qué hora es").rest.toLowerCase().includes("hora"), true);
 assert.strictEqual(parseWake("oye Jarvis abre chrome").rest.toLowerCase().includes("chrome"), true);
 assert.strictEqual(parseWake("qué hora es").woke, false);
-assert.strictEqual(parseWake("abre discord").woke, false);
+assert.strictEqual(parseWake("hola Jarvis qué hora es").woke, true);
+assert.strictEqual(parseWake("qué es jarvis").woke, false);
+assert.strictEqual(parseWake("Rabbit Jarvis abre chrome").rest.toLowerCase().includes("chrome"), true);
 console.log("wake ok");
