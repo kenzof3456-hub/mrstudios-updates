@@ -39,6 +39,9 @@ const cases = [
   ["hazme un bot de Discord", "craft"],
   ["formatea el disco", "agency_refuse"],
   ["borra el archivo discord_bot.js", "agency_ask"],
+  ["qué echan en Japón", "tv"],
+  ["what's on TV in Japan", "tv"],
+  ["reparto de The Office", "tv"],
 ];
 
 for (const [text, type] of cases) {

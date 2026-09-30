@@ -23,6 +23,13 @@ const {
   writeCraftFile,
 } = require("./craft");
 const { setLastJob, executeLast, writeAll } = require("./agency");
+const {
+  isTvPiracy,
+  pirateTvReply,
+  lookupTv,
+  formatTvAnswer,
+  tvSystem,
+} = require("./tv");
 
 function systemPrompt(profile, memory, lang) {
   const langName = languageName(lang || profile.language || "es");
@@ -33,6 +40,7 @@ function systemPrompt(profile, memory, lang) {
     `Tone: warm, composed, a spark of wit when it fits. Not hyper. Not a joke every line. Not theatrical. Alive, not carnival.`,
     `Keep answers free-form but concise. Skip forced catchphrases.`,
     `You do not only advise: when he asks to make a file, script, or model, write it to disk. When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
+    `You can look up legal TV listings worldwide (channel, local time, what the show is). Never pirate streams.`,
     `Ask once before deleting files or installing unknowns. Refuse OS wipes (format disk, rm -rf /, factory reset). Original code only — never pirate paid mods.`,
     `System: ${profile.os}.`,
     `${address(profile)}'s memory:\n${memory.contextBlock()}`,
@@ -447,6 +455,39 @@ async function handleTurn({
     };
   }
 
+  if (intent.type === "tv") {
+    if (isTvPiracy(intent.query)) {
+      return { reply: pirateTvReply(lang), intent: intent.type, language: lang };
+    }
+    const pack = await lookupTv(intent.query, lang);
+    const packed = formatTvAnswer(lang, pack);
+    const llmText = await chatWithLlm({
+      apiKey: llm.apiKey,
+      baseUrl: llm.baseUrl,
+      model: llm.model,
+      timeout: 35000,
+      messages: [
+        { role: "system", content: systemPrompt(profile, memory, lang) + " " + tvSystem(languageName(lang)) },
+        {
+          role: "user",
+          content:
+            `${address(profile)}: ${intent.query}\n\n` +
+            packed +
+            "\n\nWeb:\n" +
+            (pack.web && pack.web.length
+              ? pack.web.map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`).join("\n")
+              : "(none)"),
+        },
+      ],
+    });
+    return {
+      reply: llmText || packed,
+      intent: intent.type,
+      language: lang,
+      llm: Boolean(llmText),
+    };
+  }
+
   const results = await searchWeb(intent.query);
   const fallback = say(formatSearchAnswer(intent.query, results, lang), aside(memory, intent.query, lang));
 
@@ -498,7 +539,7 @@ function greeting(profile, memory) {
   return say(
     tx(lang, `En línea, ${address(profile)}.`, `Online, ${address(profile)}.`),
     `${time}. ${weekday}, ${date} (${timeZone}).`,
-    tx(lang, "Adjuntar, mensajes, voces: abajo y arriba. Código y Blender: los escribo. Di «házmelo» y lo ejecuto.", "Attach, messages, voices: bottom and top. I write code and Blender scripts. Say “do this” and I execute."),
+    tx(lang, "Adjuntar, mensajes, voces, TV legal, código. Di «házmelo» y lo ejecuto.", "Attach, messages, voices, legal TV, code. Say “do this” and I execute."),
     win,
     wink
   );

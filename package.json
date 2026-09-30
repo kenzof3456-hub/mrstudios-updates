@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "test": "node src/intents.test.js && node src/memory.test.js && node src/brain.memory.test.js && node src/wake.test.js && node src/sight.test.js && node src/send-parse.test.js && node src/messenger.test.js && node src/attach.test.js && node src/jarvis-voice.test.js && node src/voices.test.js && node src/lang.test.js && node src/craft.test.js && node src/agency.test.js && node src/profile.test.js && node src/faces.test.js && node src/mustship.test.js",
+    "test": "node src/intents.test.js && node src/memory.test.js && node src/brain.memory.test.js && node src/wake.test.js && node src/sight.test.js && node src/send-parse.test.js && node src/messenger.test.js && node src/attach.test.js && node src/jarvis-voice.test.js && node src/voices.test.js && node src/lang.test.js && node src/craft.test.js && node src/agency.test.js && node src/profile.test.js && node src/faces.test.js && node src/mustship.test.js && node src/tv.test.js",
     "dist:win": "electron-builder --win nsis --x64"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 const { parseSendMessage } = require("./send-parse");
 const { parseVoiceCommand } = require("./voices");
 const { looksLikeCraft, looksLikeSaveCode } = require("./craft");
+const { looksLikeTv } = require("./tv");
 const { peelDoIt, isWipe, isDestructive, consumeConfirm, setPendingDanger } = require("./agency");
 
 function normalize(text) {
@@ -154,6 +155,10 @@ function detectCore(raw) {
       return { type: "discord_camera" };
     }
     return { type: "open_app", app };
+  }
+
+  if (looksLikeTv(raw)) {
+    return { type: "tv", query: String(raw).trim() };
   }
 
   if (looksLikeCraft(raw)) {

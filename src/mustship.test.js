@@ -40,4 +40,7 @@ assert.match(html, /házmelo/);
 assert.match(html, /quién es esta persona/);
 assert.match(html, /manda un mensaje/);
 
+assert.match(html, /qué echan en Japón/);
+assert.strictEqual(detectIntent("qué echan en Japón").type, "tv");
+
 console.log("mustship ok");

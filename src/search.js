@@ -41,6 +41,18 @@ function fetchText(urlString) {
   });
 }
 
+function fetchJson(urlString) {
+  return fetchText(urlString)
+    .then((body) => {
+      try {
+        return JSON.parse(body);
+      } catch {
+        return null;
+      }
+    })
+    .catch(() => null);
+}
+
 function decodeEntities(s) {
   return String(s)
     .replace(/&amp;/g, "&")
@@ -104,4 +116,4 @@ function formatSearchAnswer(query, results, lang = "es") {
   );
 }
 
-module.exports = { searchWeb, formatSearchAnswer };
+module.exports = { searchWeb, formatSearchAnswer, fetchText, fetchJson };
