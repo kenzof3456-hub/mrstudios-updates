@@ -24,7 +24,8 @@ assert.strictEqual(detectIntent("házmelo").type, "do_last");
 assert.match(html, /id="orb"/);
 assert.match(html, /id="attach"/);
 assert.match(html, />Adjuntar</);
-assert.match(orb, /rgba\(90, 210, 255/);
+assert.match(orb, /ellipse/);
+assert.match(orb, /dir: 1/);
 assert.doesNotMatch(orb, /rgba\(255,\s*1[89]\d,\s*\d+/);
 
 assert.match(html, /id="voice-pick"/);

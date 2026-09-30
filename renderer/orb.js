@@ -47,9 +47,14 @@
   window.addEventListener("resize", resize);
   resize();
 
+  const ripples = [];
+
   function setState(next) {
     state = next;
     document.body.dataset.mode = next;
+    if (next === "speak" && ripples.length < 2) {
+      ripples.push({ t: performance.now(), dir: 1, seed: 0 });
+    }
   }
 
   function setLevel(n) {
@@ -118,23 +123,31 @@
     ctx.fillRect(0, 0, w, h);
 
     let ringTight = 1;
-    let rotSpeed = 0.22;
-    let sparkAmt = 0.35;
+    let rotSpeed = 0.18;
+    let sparkAmt = 0.22;
     let wave = 0;
     if (state === "idle") {
-      target = 0.08 + 0.06 * Math.sin(t * 0.7);
-      sparkAmt = 0.28;
+      target = 0;
+      ringTight = 1;
+      rotSpeed = 0.16;
+      sparkAmt = 0.2;
     } else if (state === "listen") {
-      ringTight = 0.72 + 0.04 * Math.sin(t * 6);
-      rotSpeed = 0.55;
-      sparkAmt = 0.55;
-      target = 0.4 + 0.15 * Math.sin(t * 8);
+      ringTight = 0.78 + 0.05 * Math.sin(t * 5);
+      rotSpeed = 0.42;
+      sparkAmt = 0.5;
+      target = 0.35 + 0.12 * Math.sin(t * 7);
+      if (ripples.length < 5 && Math.random() < 0.08) {
+        ripples.push({ t: now, dir: -1, seed: Math.random() });
+      }
     } else {
-      ringTight = 1.04 + level * 0.08;
-      rotSpeed = 0.85 + level * 0.7;
-      sparkAmt = 0.75 + level * 0.4;
-      wave = 0.55 + level * 1.1;
-      target = Math.max(target, 0.35);
+      rotSpeed = 0.55 + level * 0.85;
+      sparkAmt = 0.7 + level * 0.5;
+      wave = 0.7 + Math.max(0.4, level) * 1.35;
+      target = Math.max(target, 0.42);
+      const amp = Math.max(0.4, level);
+      if (ripples.length < 10 && Math.random() < 0.18 + amp * 0.45) {
+        ripples.push({ t: now, dir: 1, seed: Math.random() });
+      }
     }
 
     const yaw = t * rotSpeed;
@@ -172,19 +185,71 @@
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
+    const amp = Math.max(state === "speak" ? 0.45 : 0, level);
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const rp = ripples[i];
+      const age = (now - rp.t) / (rp.dir > 0 ? 1100 : 900);
+      if (age >= 1) {
+        ripples.splice(i, 1);
+        continue;
+      }
+      const grow = rp.dir > 0 ? age : 1 - age;
+      const rad = baseR * (0.18 + grow * (1.55 + amp * 0.55));
+      const alpha = (1 - age) * (rp.dir > 0 ? 0.72 + amp * 0.55 : 0.5);
+      ctx.strokeStyle = `rgba(70, 220, 255, ${alpha})`;
+      ctx.lineWidth = rp.dir > 0 ? 3.2 + amp * 4.2 : 2.2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rad, rad * 0.92, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(200, 250, 255, ${alpha * 0.55})`;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rad * 0.92, rad * 0.84, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (state === "speak") {
+      for (let k = 0; k < 4; k++) {
+        const phase = (t * (1.8 + amp * 2.4) + k * 0.25) % 1;
+        const rad = baseR * (0.22 + phase * (1.35 + amp * 0.5));
+        const alpha = (1 - phase) * (0.5 + amp * 0.7);
+        ctx.strokeStyle = `rgba(90, 230, 255, ${alpha})`;
+        ctx.lineWidth = 2.4 + amp * 3.5;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rad, rad * 0.9, Math.sin(t + k) * 0.15, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    if (state === "listen") {
+      for (let k = 0; k < 3; k++) {
+        const phase = (t * 1.1 + k / 3) % 1;
+        const rad = baseR * (1.35 - phase * 1.05);
+        ctx.strokeStyle = `rgba(80, 190, 255, ${(1 - phase) * 0.45})`;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rad, rad * 0.9, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     for (let m = 0; m < meridians; m++) {
       const theta = (m / meridians) * Math.PI * 2;
       const pts = [];
       const n = 40;
       for (let i = 0; i <= n; i++) {
         const phi = (i / n) * Math.PI;
-        const pr = xf(sph(theta, phi, ringTight));
+        const bump =
+          state === "speak"
+            ? 1 + amp * 0.16 * Math.sin(phi * 7 - t * 14 + m * 0.4)
+            : ringTight;
+        const pr = xf(sph(theta, phi, bump));
         pts.push(pr);
-        if (wave > 0.1) {
-          const pulse = 0.5 + 0.5 * Math.sin(phi * 8 - t * 10 + m);
-          if (i > 0 && pulse > 0.72) {
-            ctx.strokeStyle = `rgba(140, 230, 255, ${0.18 * pulse * wave * pr.a})`;
-            ctx.lineWidth = 2.4 * pulse * (0.6 + level);
+        if (state === "speak" && i > 0) {
+          const pulse = 0.5 + 0.5 * Math.sin(phi * 9 - t * 16 + m);
+          if (pulse > 0.55) {
+            ctx.strokeStyle = `rgba(150, 240, 255, ${0.28 * pulse * wave * pr.a})`;
+            ctx.lineWidth = 2.8 * pulse * (0.7 + amp);
             ctx.beginPath();
             ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
             ctx.lineTo(pr.x, pr.y);
