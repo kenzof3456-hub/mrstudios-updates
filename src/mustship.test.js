@@ -15,6 +15,11 @@ const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
 const orb = fs.readFileSync(path.join(root, "renderer", "orb.js"), "utf8");
 const app = fs.readFileSync(path.join(root, "renderer", "app.js"), "utf8");
+const speak = fs.readFileSync(path.join(root, "renderer", "speak.js"), "utf8");
+const tts = fs.readFileSync(path.join(root, "src", "tts.js"), "utf8");
+const planSrc = fs.readFileSync(path.join(root, "src", "plan.js"), "utf8");
+const searchSrc = fs.readFileSync(path.join(root, "src", "search.js"), "utf8");
+const main = fs.readFileSync(path.join(root, "main.js"), "utf8");
 
 assert.strictEqual(DEFAULT_PROFILE.nickname, "Señor");
 assert.strictEqual(detectIntent("hola").type, "hello");
@@ -63,5 +68,18 @@ assert.match(html, /manda un mensaje/);
 
 assert.match(html, /qué echan en Japón/);
 assert.strictEqual(detectIntent("qué echan en Japón").type, "tv");
+
+assert.match(html, /id="jarvis-voice"/);
+assert.match(speak, /unlockAudio/);
+assert.match(speak, /volume = 1/);
+assert.match(app, /HABLANDO/);
+assert.match(app, /no pude hablar/);
+assert.match(app, /onUserUnlock/);
+assert.match(tts, /\$s\.Volume = 100/);
+assert.match(main, /autoplay-policy/);
+assert.match(prompt, /search the web thoroughly/);
+assert.match(planSrc, /need_web true unless/);
+assert.match(searchSrc, /packWebForLlm/);
+assert.match(searchSrc, /documentation overview/);
 
 console.log("mustship ok");

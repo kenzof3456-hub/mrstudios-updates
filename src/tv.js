@@ -146,6 +146,7 @@ function tvSystem(langName) {
     "TV listings: name channel, local time with timezone, and what the show is.",
     "Legal sources only. Never pirate streams, rips, or illegal IPTV.",
     "You may name official apps (Netflix, Disney+, Prime Video, Max, Crunchyroll) if the sources say so.",
+    "If extras or cast are asked, combine several public pages, not one snippet, and cite 2–5 short URLs.",
     "If schedule is thin, say so. Warm, concise.",
   ].join(" ");
 }

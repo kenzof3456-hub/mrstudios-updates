@@ -115,6 +115,7 @@ function sapiSpeak(text, voiceName) {
 Add-Type -AssemblyName System.Speech
 $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
 $s.Rate = -1
+$s.Volume = 100
 $picked = $false
 $all = $s.GetInstalledVoices() | ForEach-Object { $_.VoiceInfo }
 $want = '${want}'

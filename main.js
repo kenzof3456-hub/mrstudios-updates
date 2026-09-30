@@ -16,6 +16,7 @@ const { catalog, defaultVoiceChoice } = require("./src/voices");
 const { localeFor, ttsVoiceFor } = require("./src/lang");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+app.commandLine.appendSwitch("disable-features", "PreloadMediaEngagementData");
 
 async function capturePrimary(filePath) {
   const primary = screen.getPrimaryDisplay();

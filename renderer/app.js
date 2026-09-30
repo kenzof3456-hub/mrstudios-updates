@@ -20,6 +20,8 @@ let awaitCommand = false;
 let voiceMode = "off";
 let listener = null;
 let pendingAttach = null;
+let onlineLabel = "EN LÍNEA";
+let retrySpeak = "";
 
 function showAttach(info) {
   pendingAttach = info;
@@ -69,16 +71,42 @@ function addMsg(role, text) {
   if (role === "jarvis" && caption) caption.textContent = text.split("\n")[0];
 }
 
-async function talk(text) {
-  speaking = true;
+function setTalking(on) {
+  speaking = on;
+  if (pill) {
+    pill.textContent = on ? "HABLANDO" : onlineLabel;
+    pill.classList.toggle("hablando", on);
+  }
   applyOrb();
+}
+
+async function talk(text) {
+  if (window.unlockAudio) await window.unlockAudio();
+  setTalking(true);
   try {
     if (listener && voiceMode === "always") listener.stop();
-    await window.speakOut(text, (amp, freq) => window.orbSetLevel && window.orbSetLevel(amp, freq));
+    const result = await window.speakOut(text, (amp, freq) => window.orbSetLevel && window.orbSetLevel(amp, freq));
+    const ok = result && (result.ok === true || typeof result === "string" && result !== "none");
+    if (!ok) {
+      const reason = (result && result.error) || "sin motor de voz";
+      retrySpeak = text;
+      addMsg("jarvis", "no pude hablar: " + reason);
+    } else {
+      retrySpeak = "";
+    }
   } finally {
-    speaking = false;
+    setTalking(false);
     if (voiceMode === "always" && listener) listener.startAlways();
     applyOrb();
+  }
+}
+
+async function onUserUnlock() {
+  if (window.unlockAudio) await window.unlockAudio();
+  if (retrySpeak && !speaking) {
+    const line = retrySpeak;
+    retrySpeak = "";
+    await talk(line);
   }
 }
 
@@ -214,12 +242,14 @@ async function boot() {
   applyOrb();
   try {
     const s = await window.jarvis.status();
-    if (!s.isWindows) pill.textContent = "DEV";
+    onlineLabel = s.isWindows ? "EN LÍNEA" : "DEV";
+    if (pill) pill.textContent = onlineLabel;
     window.__jarvisIsWindows = Boolean(s.isWindows);
     window.__jarvisSttLang = (s.profile && s.profile.locale) || "es-MX";
     if (window.waitVoices) await window.waitVoices();
     await fillVoices();
     addMsg("jarvis", s.greeting);
+    retrySpeak = s.greeting;
     await talk(s.greeting);
   } catch (err) {
     addMsg("jarvis", "No pude iniciar el núcleo: " + err.message);
@@ -317,3 +347,6 @@ pttBtn.addEventListener("mouseleave", () => {
 });
 
 boot();
+window.addEventListener("pointerdown", onUserUnlock, true);
+window.addEventListener("keydown", onUserUnlock, true);
+window.addEventListener("focus", onUserUnlock);

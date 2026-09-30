@@ -74,6 +74,10 @@ body {
   color: var(--muted);
 }
 
+#status-pill.hablando {
+  color: var(--cyan);
+}
+
 .caption {
   position: fixed;
   left: 12%;

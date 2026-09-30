@@ -5,7 +5,7 @@ const { describeProfile, address } = require("./profile");
 const { formatNow } = require("./time");
 const { openApp, closeApp, isWindows } = require("./windows-apps");
 const { enableDiscordCamera } = require("./discord");
-const { searchWeb, formatSearchAnswer } = require("./search");
+const { searchWeb, formatSearchAnswer, packWebForLlm } = require("./search");
 const { chatWithLlm } = require("./llm");
 const { say, aside } = require("./voice");
 const { parseWake } = require("./wake");
@@ -42,7 +42,7 @@ function systemPrompt(profile, memory, lang) {
     `Tone: lively, not extra. Warm, composed, a spark of wit when it earns its place — never a joke every line, never a canned status dump.`,
     `Think, then act. You have tools: web search, legal TV listings, screen/attach vision, local files in craft, Windows apps, send-message, memory.`,
     `When he asks to make code, mods, or 3D, write files to disk (original work only). When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
-    `Use his memory when it helps. Cite 1–3 URLs for web facts. Legal TV only — no pirate streams. Refuse OS wipes. Ask once before deleting files or installing unknowns.`,
+    `Use his memory when it helps. If you do not know, search the web thoroughly (several pages), combine them, and cite 2–5 short URLs. Legal TV only — no pirate streams. Refuse OS wipes. Ask once before deleting files or installing unknowns.`,
     `${who}'s memory:\n${memory.contextBlock()}`,
     `Clock (for you, not a status dump): ${formatNow(localeFor(lang), lang).text}.`,
   ].join(" ");
@@ -593,10 +593,8 @@ async function handleTurn({
           content:
             `${address(profile)}: ${intent.query}\n\n` +
             packed +
-            "\n\nWeb:\n" +
-            (pack.web && pack.web.length
-              ? pack.web.map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`).join("\n")
-              : "(none)"),
+            "\n\nWeb (several pages, combine extras; cite 2–5 URLs):\n" +
+            (pack.web && pack.web.length ? packWebForLlm(pack.web) : "(none)"),
         },
       ],
     });
@@ -632,15 +630,10 @@ async function handleTurn({
         content:
           `${address(profile)}: ${q}\n\n` +
           (useWeb
-            ? `Web:\n` +
-              (results.length
-                ? results
-                    .map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`)
-                    .join("\n\n")
-                : "(none)")
+            ? `Web (several pages, combine; cite 2–5 URLs):\n` + packWebForLlm(results)
             : "No web this turn. Use memory and reasoning only.") +
           `\n\nAnswer in ${languageName(lang)}. Be actually helpful. A little wit if it fits. No status dump.` +
-          (useWeb ? " Cite 1-3 URLs if you used the web." : ""),
+          (useWeb ? " Combine the pages. Cite 2-5 URLs." : ""),
       },
     ],
   });
@@ -649,7 +642,7 @@ async function handleTurn({
     reply: llmText || fallback,
     intent: "question",
     searched: useWeb && results.length > 0,
-    sources: results.slice(0, 3).map((r) => r.url),
+    sources: results.slice(0, 5).map((r) => r.url),
     llm: Boolean(llmText),
   };
 }

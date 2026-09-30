@@ -8,6 +8,61 @@ function flatten(text) {
 
 const SKIP = /helena|sabina|elvira|monica|laura|pilar|paulina|zira|hazel|susan|nova|shimmer/i;
 const PREFER = /ollie|george|ryan|daniel|alvaro|jorge|pablo|diego|united kingdom|en-gb/i;
+const SILENT =
+  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+
+let audioCtx = null;
+let unlocked = false;
+
+function voiceEl() {
+  let el = document.getElementById("jarvis-voice");
+  if (!el) {
+    el = document.createElement("audio");
+    el.id = "jarvis-voice";
+    el.setAttribute("playsinline", "");
+    document.body.appendChild(el);
+  }
+  el.muted = false;
+  el.volume = 1;
+  return el;
+}
+
+function ensureCtx() {
+  if (!window.AudioContext) return null;
+  if (!audioCtx) {
+    try {
+      audioCtx = new AudioContext();
+    } catch {
+      return null;
+    }
+  }
+  return audioCtx;
+}
+
+async function unlockAudio() {
+  unlocked = true;
+  const ctx = ensureCtx();
+  if (ctx && ctx.state === "suspended") {
+    try {
+      await ctx.resume();
+    } catch {
+      /* ignore */
+    }
+  }
+  const el = voiceEl();
+  try {
+    el.muted = false;
+    el.volume = 1;
+    el.src = SILENT;
+    await el.play();
+    el.pause();
+    el.removeAttribute("src");
+    el.load();
+  } catch {
+    /* first gesture may still be required */
+  }
+  return { unlocked: true, ctx: ctx ? ctx.state : "none" };
+}
 
 function pickJarvisVoice(preferredName) {
   const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
@@ -33,29 +88,31 @@ function pickJarvisVoice(preferredName) {
       best = v;
     }
   }
-  return best || voices.find((v) => /^es/i.test(v.lang)) || null;
+  return best || voices.find((v) => /^es/i.test(v.lang)) || voices[0] || null;
 }
 
 function waitVoices() {
   return new Promise((resolve) => {
     if (!window.speechSynthesis) {
-      resolve();
+      resolve([]);
       return;
     }
-    if (speechSynthesis.getVoices().length) {
-      resolve();
+    const grab = () => speechSynthesis.getVoices() || [];
+    if (grab().length) {
+      resolve(grab());
       return;
     }
-    const done = () => resolve();
+    const done = () => resolve(grab());
     speechSynthesis.addEventListener("voiceschanged", done, { once: true });
-    setTimeout(done, 1500);
+    speechSynthesis.getVoices();
+    setTimeout(done, 2500);
   });
 }
 
 function monitorElement(audio, onLevel) {
-  if (!onLevel || !window.AudioContext) return () => {};
+  const ctx = ensureCtx();
+  if (!onLevel || !ctx || ctx.state !== "running") return () => {};
   try {
-    const ctx = new AudioContext();
     const src = ctx.createMediaElementSource(audio);
     const an = ctx.createAnalyser();
     an.fftSize = 512;
@@ -84,10 +141,7 @@ function monitorElement(audio, onLevel) {
       raf = requestAnimationFrame(loop);
     };
     loop();
-    return () => {
-      cancelAnimationFrame(raf);
-      ctx.close().catch(() => {});
-    };
+    return () => cancelAnimationFrame(raf);
   } catch {
     return () => {};
   }
@@ -119,23 +173,28 @@ function fakeEnvelope(text, onLevel) {
 function speakBrowser(text, onLevel, plan) {
   return new Promise((resolve) => {
     if (!window.speechSynthesis) {
-      resolve(false);
+      resolve({ ok: false, error: "sin speechSynthesis" });
+      return;
+    }
+    const voices = speechSynthesis.getVoices() || [];
+    if (!voices.length) {
+      resolve({ ok: false, error: "voces Chromium vacías (espera un clic o instala voces)" });
       return;
     }
     let settled = false;
     const spoken = flatten(text);
     const stopEnv = fakeEnvelope(spoken, onLevel);
-    const finish = (ok) => {
+    const finish = (ok, error) => {
       if (settled) return;
       settled = true;
       stopEnv();
       clearTimeout(timer);
-      resolve(ok);
+      clearTimeout(watch);
+      resolve({ ok, method: ok ? "browser" : "none", error: ok ? "" : error || "speechSynthesis falló" });
     };
-    const noVoices = speechSynthesis.getVoices().length === 0;
     const timer = setTimeout(
-      () => finish(true),
-      noVoices ? 600 : Math.min(12000, 800 + spoken.length * 80)
+      () => finish(speechSynthesis.speaking || speechSynthesis.pending, "timeout speechSynthesis"),
+      Math.min(12000, 900 + spoken.length * 80)
     );
     const u = new SpeechSynthesisUtterance(spoken);
     u.lang = (plan && plan.lang) || "es-ES";
@@ -148,13 +207,18 @@ function speakBrowser(text, onLevel, plan) {
       if (voice.lang) u.lang = voice.lang;
     }
     u.onend = () => finish(true);
-    u.onerror = () => finish(false);
+    u.onerror = (e) => finish(false, (e && e.error) || "utterance error");
     try {
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
-    } catch {
-      finish(false);
+    } catch (err) {
+      finish(false, err.message || "speak() lanzó");
     }
+    const watch = setTimeout(() => {
+      if (!settled && !speechSynthesis.speaking && !speechSynthesis.pending) {
+        finish(false, "speechSynthesis no arrancó (gesto o voces)");
+      }
+    }, 450);
   });
 }
 
@@ -166,47 +230,64 @@ function playBase64Mp3(b64, onLevel) {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       const blob = new Blob([bytes], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      const stopMon = monitorElement(audio, onLevel);
-      audio.onended = () => {
+      const audio = voiceEl();
+      audio.muted = false;
+      audio.volume = 1;
+      audio.src = url;
+      const ctx = ensureCtx();
+      const graphOk = ctx && ctx.state === "running";
+      const stopMon = graphOk ? monitorElement(audio, onLevel) : fakeEnvelope("mp3", onLevel);
+      const done = (ok, error) => {
         stopMon();
         URL.revokeObjectURL(url);
-        if (onLevel) onLevel(0);
-        resolve(true);
+        if (onLevel) onLevel(0, 0);
+        resolve({ ok, error: ok ? "" : error || "audio.play falló" });
       };
-      audio.onerror = () => {
-        stopMon();
-        URL.revokeObjectURL(url);
-        resolve(false);
-      };
-      audio.play().catch(() => resolve(false));
-    } catch {
-      resolve(false);
+      audio.onended = () => done(true);
+      audio.onerror = () => done(false, "elemento <audio> error");
+      const playp = audio.play();
+      if (playp && playp.then) {
+        playp.catch((err) => done(false, err && err.name === "NotAllowedError" ? "autoplay bloqueado — pulsa Oído o la ventana" : (err && err.message) || "play rechazado"));
+      }
+    } catch (err) {
+      resolve({ ok: false, error: err.message || "mp3 inválido" });
     }
   });
 }
 
 async function speakOut(text, onLevel) {
+  await unlockAudio();
   await waitVoices();
-  const plan = await window.jarvis.speakPlan(text);
+  const plan = (await window.jarvis.speakPlan(text)) || {};
   if ((plan.method === "cloud" || plan.method === "edge") && plan.audio) {
-    const ok = await playBase64Mp3(plan.audio, onLevel);
-    if (ok) return plan.method;
+    const played = await playBase64Mp3(plan.audio, onLevel);
+    if (played.ok) return { ok: true, method: plan.method };
   }
   if (plan.method === "browser") {
     const local = await speakBrowser(text, onLevel, plan);
-    if (local) return "browser";
+    if (local.ok) return local;
   }
-  if (window.__jarvisIsWindows) {
+  if (window.__jarvisIsWindows || plan.method === "local") {
     const stop = fakeEnvelope(text, onLevel);
     const sapi = await window.jarvis.sapi(text, plan.sapiVoice || "");
     stop();
-    if (sapi && sapi.ok) return "sapi";
+    if (sapi && sapi.ok) return { ok: true, method: "sapi" };
+    if (sapi && sapi.reason && sapi.reason !== "not-windows") {
+      const local = await speakBrowser(text, onLevel, plan);
+      if (local.ok) return local;
+      return { ok: false, method: "none", error: "SAPI: " + sapi.reason };
+    }
   }
   const local = await speakBrowser(text, onLevel, plan);
-  if (local) return "browser";
-  return "none";
+  if (local.ok) return local;
+  return {
+    ok: false,
+    method: "none",
+    error: local.error || "ni Edge, ni OpenAI, ni SAPI, ni Chromium",
+  };
 }
 
 window.speakOut = speakOut;
 window.waitVoices = waitVoices;
+window.unlockAudio = unlockAudio;
+window.pickJarvisVoice = pickJarvisVoice;

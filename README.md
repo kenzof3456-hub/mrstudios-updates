@@ -11,7 +11,7 @@ Jarvis habla con **Señor** (Luis). Contesta en el **mismo idioma** que Señor (
 3. Perfil local persistente: Luis / Señor / Windows.
 4. **Memoria local** (`userData/memory.json`): si Señor cuenta hechos (gustos, apps, Discord, horarios, cómo le gusta que le hablen), Jarvis los guarda y los usa después. «qué sabes de mí» los lista; «olvida X» o «olvida todo» los borra.
 5. Cámara de Discord (mejor esfuerzo): abre Discord si hace falta, enfoca la ventana y envía **Ctrl+Shift+V** (Toggle Camera).
-6. Preguntas generales: busca en la web y responde en español, con fuentes cortas.
+6. Preguntas generales, gente, extras de TV y docs de código: busca **varias páginas** (no un snippet), combina y cita 2–5 URLs cortas. El planificador pone `need_web` salvo herramientas locales (hora, abrir app, hola).
 7. Hora, día de la semana y fecha en español, zona horaria local de Windows.
 8. **Voz:** oído siempre (o PTT). Palabra de activación **«Jarvis»** → responde en voz alta al momento (saludo o chiste). Luego ejecuta la orden hablada. TTS por defecto: **Microsoft Edge neural `es-ES-AlvaroNeural`** (varón castellano sobrio; análogo español del mayordomo británico). Reserva: `en-GB-RyanNeural`, OpenAI **`fable`**, SAPI masculino, Chromium.
 9. **Pantalla (solo si lo pides):** «mira mi pantalla» captura el monitor principal y la guarda en `userData/last-screen.png`. Nunca en segundo plano. «qué es esto» / «quién es esta persona»: visión (si hay API) u OCR local (`tesseract`), luego búsqueda web de **figuras públicas**. La imagen solo se envía al LLM que configuraste. Sin webcam siempre encendida ni base de caras de extraños.
@@ -41,6 +41,14 @@ Tono: cálido, vivo, sin excesos. UI: esfera holográfica **cian** (wireframe ti
 Referencia de personaje (metadatos públicos, no el archivo de audio): el clip [Audio de Jarvis (despertador de cada mañana) parte 3](https://www.youtube.com/watch?v=uneoc9zZan0) de THExMISIOxYT es una alarma fan en español al estilo de J.A.R.V.I.S. de Iron Man (en cine, Paul Bettany). Jarvis **no descarga ni clona** ese audio.
 
 Oído continuo puede oír al propio TTS; Jarvis pausa el reconocimiento mientras habla.
+
+## Cómo oír a Jarvis (Windows)
+
+1. Altavoces o auriculares enchufados; volumen de Windows **no en 0** y Jarvis no silenciado en el mezclador.
+2. Instala voces: **Configuración → Hora e idioma → Voz** (Álvaro, Jorge, George, Ryan). Edge instalado ayuda al TTS neural.
+3. El **primer clic** en la ventana (o **Oído** / cualquier botón) desbloquea el audio.
+4. El chip **HABLANDO** debe encenderse al hablar; si oyes silencio, sube volumen.
+5. Si el chat dice `no pude hablar: …`, el motivo está ahí (autoplay, voces vacías, Edge, etc.). Vuelve a pulsar la ventana.
 
 ## Pantalla (solo bajo orden)
 
