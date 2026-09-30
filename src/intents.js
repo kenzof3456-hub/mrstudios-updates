@@ -1,3 +1,5 @@
+const { parseSendMessage } = require("./send-parse");
+
 function normalize(text) {
   return String(text || "")
     .toLowerCase()
@@ -54,6 +56,9 @@ function detectIntent(raw) {
   ) {
     return { type: "remember", fact: String(raw).trim() };
   }
+
+  const send = parseSendMessage(raw);
+  if (send) return send;
 
   if (
     /(mira|ve|ver|echa un vistazo|captura|screenshot|fotografia).{0,50}(pantalla|screen|monitor|escritorio)|mira mi pantalla|look at (my )?(screen|display)/.test(

@@ -4,6 +4,7 @@ const path = require("path");
 const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen } = require("electron");
 const { loadProfile } = require("./src/profile");
 const { createMemory } = require("./src/memory");
+const { createMessenger } = require("./src/messenger");
 const { createSight } = require("./src/sight");
 const { handleTurn, greeting } = require("./src/brain");
 const { isWindows } = require("./src/windows-apps");
@@ -89,6 +90,7 @@ app.whenReady().then(() => {
     captureFn: captureUserScreen,
     llm,
   });
+  const messenger = createMessenger({ memory });
   const ttsCfg = {
     apiKey: process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
@@ -107,7 +109,7 @@ app.whenReady().then(() => {
   ipcMain.handle("jarvis:chat", async (_evt, payload) => {
     const text = String(payload?.text || "");
     const history = Array.isArray(payload?.history) ? payload.history : [];
-    return handleTurn({ text, history, profile, llm, memory, sight });
+    return handleTurn({ text, history, profile, llm, memory, sight, messenger });
   });
 
   ipcMain.handle("jarvis:wake-line", () => pickWakeLine());

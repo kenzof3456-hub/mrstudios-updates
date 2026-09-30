@@ -18,6 +18,8 @@ const cases = [
   ["mira mi pantalla", "look_screen"],
   ["mira la pantalla y busca quién es", "look_ask"],
   ["qué es esto", "screen_ask"],
+  ["manda un mensaje a mamá por WhatsApp que ya voy", "send_message"],
+  ["dile a Pedro que llegué", "send_message"],
 ];
 
 for (const [text, type] of cases) {
@@ -26,4 +28,7 @@ for (const [text, type] of cases) {
 }
 
 assert.strictEqual(detectIntent("abre el bloc de notas").app.includes("bloc"), true);
+assert.strictEqual(detectIntent("dile a Pedro que llegué").to.toLowerCase().includes("pedro"), true);
+assert.match(detectIntent("manda un mensaje a mamá por WhatsApp que ya voy").body, /voy/i);
+assert.strictEqual(detectIntent("manda un mensaje a mamá por WhatsApp que ya voy").app, "whatsapp");
 console.log("intents ok");

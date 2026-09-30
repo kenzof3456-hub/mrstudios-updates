@@ -15,6 +15,7 @@ Jarvis habla con **Rabbit** (Luis) en español, HUD oscuro estilo J.A.R.V.I.S.
 7. Hora, día de la semana y fecha en español, zona horaria local de Windows.
 8. **Voz:** oído siempre (o PTT). Palabra de activación **«Jarvis»** → responde en voz alta al momento (saludo o chiste). Luego ejecuta la orden hablada. TTS expresivo: OpenAI si hay clave, si no **voces de Chromium / SAPI de Windows**.
 9. **Pantalla (solo si lo pides):** «mira mi pantalla» captura el monitor principal y la guarda en `userData/last-screen.png`. Nunca en segundo plano. «qué es esto» / «quién es»: visión (si hay API) u OCR local (`tesseract`), luego búsqueda web. La imagen solo se envía al LLM que configuraste.
+10. **Mensajes a una persona:** «manda a mamá por WhatsApp que ya voy». Parsea destinatario, texto y app (WhatsApp, Discord, Telegram, SMS, correo). Si no dices app, usa un recuerdo tipo «usa WhatsApp para mamá» o pregunta **una vez** y lo guarda. En Windows abre/enfoca la app (URI `whatsapp://`, `wa.me`, `discord`, `tg://`, `mailto:`, `sms:`), busca el contacto, pega y Enter. Confirma en voz qué se mandó o qué lo bloqueó. Sin destinatario + mensaje claros, no envía. Apodos desde `memory.json`; no inventa números ni correos.
 
 Tono: alegre y **expresivo**. UI: esfera azul central (pulso en reposo, anillos al escuchar, ondas al hablar). Chat secundario.
 

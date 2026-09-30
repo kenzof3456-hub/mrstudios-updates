@@ -23,7 +23,7 @@ function systemPrompt(profile, memory) {
   ].join(" ");
 }
 
-async function handleTurn({ text, history, profile, llm, memory, sight }) {
+async function handleTurn({ text, history, profile, llm, memory, sight, messenger }) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
   if (parsed.woke && !work) {
@@ -31,6 +31,13 @@ async function handleTurn({ text, history, profile, llm, memory, sight }) {
   }
 
   const intent = detectIntent(work);
+
+  if (messenger) {
+    const sendReply = await messenger.handleTurnText(work, intent);
+    if (sendReply) {
+      return { reply: sendReply, intent: "send_message" };
+    }
+  }
 
   if (intent.type === "empty") {
     return {
@@ -230,6 +237,7 @@ function greeting(profile, memory) {
     "¡Sistemas en línea, Rabbit!",
     "Qué alegría verte.",
     `Son las ${time}. Hoy es ${weekday}, ${date} (${timeZone}).`,
+    "Mensajes: «manda a mamá por WhatsApp que ya voy». Si no dices app, miro la memoria o te pregunto una vez.",
     win,
     wink
   );
