@@ -67,7 +67,7 @@ npm install
 npm start
 ```
 
-Sin `OPENAI_API_KEY` Jarvis sigue con hora, perfil, apps, Discord, búsqueda, memoria, adjuntos y **TTS Edge neural** (`es-ES-AlvaroNeural`).
+Sin `OPENAI_API_KEY` Jarvis sigue con hora, perfil, apps, Discord, búsqueda combinada (no stubs de una línea), memoria, adjuntos y **TTS Edge neural** (`es-ES-AlvaroNeural`). Con clave, el cerebro **piensa y actúa**: el LLM elige herramienta (búsqueda, TV, código, házmelo); los intents son el fallback.
 
 ## Cómo generar el instalador
 

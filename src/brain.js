@@ -30,22 +30,62 @@ const {
   formatTvAnswer,
   tvSystem,
 } = require("./tv");
+const { parsePlan, intentFromPlan, plannerPrompt } = require("./plan");
 
 function systemPrompt(profile, memory, lang) {
+  const who = address(profile);
   const langName = languageName(lang || profile.language || "es");
   return [
-    `You are Jarvis, desktop assistant for ${profile.realName}.`,
-    `Always call him ${address(profile)} (use Luis only if he asks his real name).`,
+    `You are Jarvis, a sharp, well-informed desktop assistant for ${profile.realName} on ${profile.os}.`,
+    `Always address him as ${who}. Never any other nickname. Use Luis only if he asks his real name.`,
     `Reply in ${langName}. Match his language exactly.`,
-    `Tone: warm, composed, a spark of wit when it fits. Not hyper. Not a joke every line. Not theatrical. Alive, not carnival.`,
-    `Keep answers free-form but concise. Skip forced catchphrases.`,
-    `You do not only advise: when he asks to make a file, script, or model, write it to disk. When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
-    `You can look up legal TV listings worldwide (channel, local time, what the show is). Never pirate streams.`,
-    `Ask once before deleting files or installing unknowns. Refuse OS wipes (format disk, rm -rf /, factory reset). Original code only — never pirate paid mods.`,
-    `System: ${profile.os}.`,
-    `${address(profile)}'s memory:\n${memory.contextBlock()}`,
-    `Use memories when they help. Cite web sources in one line.`,
+    `Tone: lively, not extra. Warm, composed, a spark of wit when it earns its place — never a joke every line, never a canned status dump.`,
+    `Think, then act. You have tools: web search, legal TV listings, screen/attach vision, local files in craft, Windows apps, send-message, memory.`,
+    `When he asks to make code, mods, or 3D, write files to disk (original work only). When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
+    `Use his memory when it helps. Cite 1–3 URLs for web facts. Legal TV only — no pirate streams. Refuse OS wipes. Ask once before deleting files or installing unknowns.`,
+    `${who}'s memory:\n${memory.contextBlock()}`,
   ].join(" ");
+}
+
+function hasThinker(llm) {
+  return Boolean(llm && (llm.apiKey || typeof llm.chat === "function"));
+}
+
+function think(llm, opts) {
+  if (llm && typeof llm.chat === "function") return llm.chat(opts);
+  return chatWithLlm({
+    apiKey: llm && llm.apiKey,
+    baseUrl: llm && llm.baseUrl,
+    model: llm && llm.model,
+    ...opts,
+  });
+}
+
+const PLAN_HINTS = new Set(["question", "craft", "tv", "do_last"]);
+
+async function maybePlan(llm, intent, work, ctx) {
+  if (!hasThinker(llm) || !PLAN_HINTS.has(intent.type)) return intent;
+  const raw = await think(llm, {
+    timeout: 12000,
+    json: true,
+    messages: [
+      { role: "system", content: plannerPrompt(address(ctx.profile), languageName(ctx.lang)) },
+      {
+        role: "user",
+        content:
+          `Hint: ${intent.type}\n` +
+          `Memory:\n${ctx.memory.contextBlock()}\n` +
+          `Recent:\n${(ctx.history || [])
+            .slice(-4)
+            .map((m) => `${m.role}: ${m.content}`)
+            .join("\n")}\n` +
+          `${address(ctx.profile)}: ${work}`,
+      },
+    ],
+  });
+  const plan = parsePlan(raw);
+  if (!plan) return intent;
+  return intentFromPlan(plan, intent.query || work);
 }
 
 async function handleTurn({
@@ -85,7 +125,7 @@ async function handleTurn({
     return { reply: pickWakeLine(lang), intent: "wake", spokeWake: true, language: lang };
   }
 
-  const intent = detectIntent(work);
+  let intent = detectIntent(work);
 
   if (messenger) {
     const sendReply = await messenger.handleTurnText(work, intent);
@@ -157,6 +197,8 @@ async function handleTurn({
       language: lang,
     };
   }
+
+  intent = await maybePlan(llm, intent, work, { profile, memory, lang, history });
 
   if (intent.type === "do_last") {
     const did = await executeLast(craftDir, lang);
@@ -434,10 +476,7 @@ async function handleTurn({
     if (isPiracy(intent.query)) {
       return { reply: pirateReply(lang), intent: intent.type, language: lang };
     }
-    const llmText = await chatWithLlm({
-      apiKey: llm.apiKey,
-      baseUrl: llm.baseUrl,
-      model: llm.model,
+    const llmText = await think(llm, {
       timeout: 50000,
       messages: [
         { role: "system", content: systemPrompt(profile, memory, lang) + " " + craftSystem(languageName(lang)) },
@@ -483,10 +522,7 @@ async function handleTurn({
     }
     const pack = await lookupTv(intent.query, lang);
     const packed = formatTvAnswer(lang, pack);
-    const llmText = await chatWithLlm({
-      apiKey: llm.apiKey,
-      baseUrl: llm.baseUrl,
-      model: llm.model,
+    const llmText = await think(llm, {
       timeout: 35000,
       messages: [
         { role: "system", content: systemPrompt(profile, memory, lang) + " " + tvSystem(languageName(lang)) },
@@ -510,27 +546,25 @@ async function handleTurn({
     };
   }
 
-  const results = await searchWeb(intent.query);
-  const fallback = say(formatSearchAnswer(intent.query, results, lang), aside(memory, intent.query, lang));
+  const q = intent.query || work;
+  const results = await searchWeb(q);
+  const fallback = say(formatSearchAnswer(q, results, lang), aside(memory, q, lang));
 
-  const llmText = await chatWithLlm({
-    apiKey: llm.apiKey,
-    baseUrl: llm.baseUrl,
-    model: llm.model,
+  const llmText = await think(llm, {
     messages: [
       { role: "system", content: systemPrompt(profile, memory, lang) },
       ...history.slice(-8),
       {
         role: "user",
         content:
-          `${address(profile)}: ${intent.query}\n\n` +
+          `${address(profile)}: ${q}\n\n` +
           `Web:\n` +
           (results.length
             ? results
                 .map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`)
                 .join("\n\n")
             : "(none)") +
-          `\n\nReply in ${languageName(lang)}. Warm and concise. A little wit if it fits — not a joke every line. Cite 1-3 URLs at the end.`,
+          `\n\nAnswer in ${languageName(lang)}. Be actually helpful: synthesize the sources, don't list stubs. A little wit if it fits. Cite 1-3 URLs. No status dump.`,
       },
     ],
   });
@@ -567,4 +601,4 @@ function greeting(profile, memory) {
   );
 }
 
-module.exports = { handleTurn, greeting, systemPrompt };
+module.exports = { handleTurn, greeting, systemPrompt, hasThinker, think };

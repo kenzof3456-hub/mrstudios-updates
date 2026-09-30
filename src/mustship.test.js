@@ -6,6 +6,7 @@ const { peelDoIt } = require("./agency");
 const { looksLikeCraft } = require("./craft");
 const { looksLikeFaceAsk } = require("./faces");
 const { detectIntent } = require("./intents");
+const { systemPrompt } = require("./brain");
 const { catalog } = require("./voices");
 const { detectLanguage } = require("./lang");
 const { GREETINGS } = require("./spoken");
@@ -24,6 +25,14 @@ assert.doesNotMatch(GREETINGS.es.join(" "), /Rabbit/);
 assert.match(app, /SEÑOR/);
 assert.strictEqual(peelDoIt("hazme esto").bare, true);
 assert.strictEqual(detectIntent("házmelo").type, "do_last");
+const prompt = systemPrompt(
+  { realName: "Luis", nickname: "Señor", os: "Windows", language: "es" },
+  { contextBlock: () => "" },
+  "es"
+);
+assert.match(prompt, /Señor/);
+assert.match(prompt, /Think, then act/);
+assert.doesNotMatch(prompt, /Rabbit/);
 
 assert.match(html, /id="orb"/);
 assert.match(html, /id="attach"/);

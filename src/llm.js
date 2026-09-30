@@ -1,14 +1,15 @@
 const https = require("https");
 const { URL } = require("url");
 
-function postChat({ apiKey, baseUrl, model, messages, timeout = 45000 }) {
+function postChat({ apiKey, baseUrl, model, messages, timeout = 45000, json = false }) {
   if (!apiKey) return Promise.resolve(null);
   const root = (baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
   const url = new URL(`${root}/chat/completions`);
   const body = JSON.stringify({
     model: model || "gpt-4o-mini",
-    temperature: 0.4,
+    temperature: json ? 0.2 : 0.45,
     messages,
+    ...(json ? { response_format: { type: "json_object" } } : {}),
   });
 
   return new Promise((resolve) => {
@@ -47,8 +48,8 @@ function postChat({ apiKey, baseUrl, model, messages, timeout = 45000 }) {
   });
 }
 
-function chatWithLlm({ apiKey, baseUrl, model, messages, timeout }) {
-  return postChat({ apiKey, baseUrl, model, messages, timeout: timeout || 25000 });
+function chatWithLlm({ apiKey, baseUrl, model, messages, timeout, json }) {
+  return postChat({ apiKey, baseUrl, model, messages, timeout: timeout || 25000, json });
 }
 
 function visionRead({ apiKey, baseUrl, model, dataUrl, prompt }) {
