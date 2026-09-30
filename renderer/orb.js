@@ -142,10 +142,10 @@
     } else {
       rotSpeed = 0.55 + level * 0.85;
       sparkAmt = 0.7 + level * 0.5;
-      wave = 0.7 + Math.max(0.4, level) * 1.35;
-      target = Math.max(target, 0.42);
-      const amp = Math.max(0.4, level);
-      if (ripples.length < 10 && Math.random() < 0.18 + amp * 0.45) {
+      wave = 0.9 + Math.max(0.5, level) * 1.6;
+      target = Math.max(target, 0.55);
+      const amp = Math.max(0.55, level);
+      if (ripples.length < 14 && Math.random() < 0.28 + amp * 0.55) {
         ripples.push({ t: now, dir: 1, seed: Math.random() });
       }
     }
@@ -194,10 +194,10 @@
         continue;
       }
       const grow = rp.dir > 0 ? age : 1 - age;
-      const rad = baseR * (0.18 + grow * (1.55 + amp * 0.55));
-      const alpha = (1 - age) * (rp.dir > 0 ? 0.72 + amp * 0.55 : 0.5);
+      const rad = baseR * (0.16 + grow * (1.85 + amp * 0.7));
+      const alpha = (1 - age) * (rp.dir > 0 ? 0.85 + amp * 0.55 : 0.5);
       ctx.strokeStyle = `rgba(70, 220, 255, ${alpha})`;
-      ctx.lineWidth = rp.dir > 0 ? 3.2 + amp * 4.2 : 2.2;
+      ctx.lineWidth = rp.dir > 0 ? 4.2 + amp * 5.2 : 2.2;
       ctx.beginPath();
       ctx.ellipse(cx, cy, rad, rad * 0.92, 0, 0, Math.PI * 2);
       ctx.stroke();
@@ -209,14 +209,19 @@
     }
 
     if (state === "speak") {
-      for (let k = 0; k < 4; k++) {
-        const phase = (t * (1.8 + amp * 2.4) + k * 0.25) % 1;
-        const rad = baseR * (0.22 + phase * (1.35 + amp * 0.5));
-        const alpha = (1 - phase) * (0.5 + amp * 0.7);
-        ctx.strokeStyle = `rgba(90, 230, 255, ${alpha})`;
-        ctx.lineWidth = 2.4 + amp * 3.5;
+      for (let k = 0; k < 6; k++) {
+        const phase = (t * (1.35 + amp * 1.8) + k / 6) % 1;
+        const rad = baseR * (0.16 + phase * (1.9 + amp * 0.65));
+        const alpha = (1 - phase) * (0.62 + amp * 0.85);
+        ctx.strokeStyle = `rgba(70, 230, 255, ${alpha})`;
+        ctx.lineWidth = 3.8 + amp * 5.5;
         ctx.beginPath();
-        ctx.ellipse(cx, cy, rad, rad * 0.9, Math.sin(t + k) * 0.15, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, rad, rad * 0.88, Math.sin(t * 0.6 + k) * 0.1, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(210, 252, 255, ${alpha * 0.5})`;
+        ctx.lineWidth = 1.35;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rad * 0.97, rad * 0.84, Math.sin(t * 0.6 + k) * 0.1, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
@@ -241,15 +246,15 @@
         const phi = (i / n) * Math.PI;
         const bump =
           state === "speak"
-            ? 1 + amp * 0.16 * Math.sin(phi * 7 - t * 14 + m * 0.4)
+            ? 1 + amp * 0.26 * Math.sin(phi * 7 - t * 14 + m * 0.4)
             : ringTight;
         const pr = xf(sph(theta, phi, bump));
         pts.push(pr);
         if (state === "speak" && i > 0) {
           const pulse = 0.5 + 0.5 * Math.sin(phi * 9 - t * 16 + m);
-          if (pulse > 0.55) {
-            ctx.strokeStyle = `rgba(150, 240, 255, ${0.28 * pulse * wave * pr.a})`;
-            ctx.lineWidth = 2.8 * pulse * (0.7 + amp);
+          if (pulse > 0.42) {
+            ctx.strokeStyle = `rgba(150, 240, 255, ${0.4 * pulse * wave * pr.a})`;
+            ctx.lineWidth = 3.4 * pulse * (0.75 + amp);
             ctx.beginPath();
             ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
             ctx.lineTo(pr.x, pr.y);
