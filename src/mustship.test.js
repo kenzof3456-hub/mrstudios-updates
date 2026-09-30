@@ -26,6 +26,9 @@ assert.match(html, /id="attach"/);
 assert.match(html, />Adjuntar</);
 assert.match(orb, /ellipse/);
 assert.match(orb, /dir: 1/);
+assert.match(orb, /dir: -1/);
+assert.match(orb, /state === "speak"/);
+assert.match(orb, /rotSpeed = 0\.16/);
 assert.doesNotMatch(orb, /rgba\(255,\s*1[89]\d,\s*\d+/);
 
 assert.match(html, /id="voice-pick"/);

@@ -101,6 +101,18 @@ clearPendingDanger();
   setLastFiles([{ name: "ping.js", language: "js", content: "console.log(1)\n" }]);
   const last = await executeLast(craftDir, "es");
   assert.ok(fs.existsSync(last.saved[0]));
+  assert.ok(last.ran && last.ran[0] && last.ran[0].ok);
+  assert.match(last.reply, /ejecuté|1/);
+
+  setLastFiles([
+    {
+      name: "discord_bot.js",
+      language: "js",
+      content: "console.log('login');\nclient.login('x');\n",
+    },
+  ]);
+  const skip = await executeLast(craftDir, "es");
+  assert.ok(skip.ran && skip.ran[0] && skip.ran[0].skipped);
   clearPendingDanger();
   console.log("agency ok");
 })().catch((e) => {

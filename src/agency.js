@@ -95,6 +95,13 @@ function writeAll(dir, files) {
   return files.map((f) => writeCraftFile(dir, f));
 }
 
+function looksLongRunning(filePath, content) {
+  const blob = `${filePath}\n${content || ""}`;
+  return /(discord|client\.login|bot\.run|createServer|app\.listen|while\s*\(\s*true|setInterval)/i.test(
+    blob
+  );
+}
+
 function runFile(filePath) {
   return new Promise((resolve) => {
     const dest = path.resolve(filePath);
@@ -106,20 +113,34 @@ function runFile(filePath) {
     }
     const child = spawn(cmd, [dest], {
       cwd: path.dirname(dest),
-      timeout: 8000,
       env: { ...process.env, DISCORD_TOKEN: "" },
     });
     let out = "";
     let err = "";
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const timer = setTimeout(() => {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+        /* ignore */
+      }
+      finish({ ok: false, detail: "timeout 8s", code: null });
+    }, 8000);
     child.stdout.on("data", (d) => {
       out += d.toString();
     });
     child.stderr.on("data", (d) => {
       err += d.toString();
     });
-    child.on("error", (e) => resolve({ ok: false, detail: e.message }));
+    child.on("error", (e) => finish({ ok: false, detail: e.message }));
     child.on("close", (code) => {
-      resolve({
+      finish({
         ok: code === 0,
         detail: (out || err || `exit ${code}`).trim().slice(0, 800),
         code,
@@ -128,26 +149,67 @@ function runFile(filePath) {
   });
 }
 
+function formatRunLines(lang, saved, ran) {
+  const head =
+    lang === "en" ? "Done. Wrote:\n" + saved.join("\n") : "Hecho. Escrito:\n" + saved.join("\n");
+  if (!ran || !ran.length) return head;
+  const bits = ran.map((r) => {
+    if (r.skipped) {
+      return lang === "en"
+        ? `Left ${path.basename(r.dest)} on disk (long-running). Run it yourself.`
+        : `Dejé ${path.basename(r.dest)} en disco (proceso largo). Ábrelo tú.`;
+    }
+    const tag = r.ok ? (lang === "en" ? "ran" : "ejecuté") : lang === "en" ? "failed" : "falló";
+    const detail = r.detail ? ` — ${r.detail}` : "";
+    return `${tag} ${path.basename(r.dest)}${detail}`;
+  });
+  return head + "\n" + bits.join("\n");
+}
+
+async function runSaved(saved, files) {
+  const ran = [];
+  for (let i = 0; i < saved.length; i++) {
+    const dest = saved[i];
+    const content = files && files[i] ? files[i].content : "";
+    if (!dest || !/\.(js|mjs|py)$/i.test(dest)) continue;
+    if (looksLongRunning(dest, content)) {
+      ran.push({ dest, skipped: true });
+      continue;
+    }
+    const r = await runFile(dest);
+    ran.push({ dest, ...r });
+  }
+  return ran;
+}
+
 async function executeLast(craftDir, lang) {
   const files = getLastFiles();
   if (files.length && craftDir) {
     const saved = writeAll(craftDir, files);
-    setLastJob({ type: "craft", saved });
+    const ran = await runSaved(saved, files);
+    setLastJob({ type: "craft", saved, files, ran });
     return {
-      reply:
-        lang === "en"
-          ? "Done. Wrote:\n" + saved.join("\n")
-          : "Hecho. Escrito:\n" + saved.join("\n"),
+      reply: formatRunLines(lang, saved, ran),
       saved,
+      ran,
+    };
+  }
+  if (lastJob && lastJob.type === "open_app" && lastJob.app) {
+    const { openApp } = require("./windows-apps");
+    const r = await openApp(lastJob.app);
+    return {
+      reply: r.message,
+      saved: lastJob.saved || [],
+      ran: [],
+      ok: r.ok,
     };
   }
   if (lastJob && lastJob.saved && lastJob.saved.length) {
+    const ran = await runSaved(lastJob.saved, lastJob.files || []);
     return {
-      reply:
-        lang === "en"
-          ? "Already on disk:\n" + lastJob.saved.join("\n")
-          : "Ya está en disco:\n" + lastJob.saved.join("\n"),
+      reply: formatRunLines(lang, lastJob.saved, ran),
       saved: lastJob.saved,
+      ran,
     };
   }
   return {
@@ -156,6 +218,7 @@ async function executeLast(craftDir, lang) {
         ? "Nothing queued. Tell me what to make or open."
         : "No hay nada en cola. Dime qué hago o qué abro.",
     saved: [],
+    ran: [],
   };
 }
 
@@ -174,5 +237,6 @@ module.exports = {
   consumeConfirm,
   writeAll,
   runFile,
+  looksLongRunning,
   executeLast,
 };
