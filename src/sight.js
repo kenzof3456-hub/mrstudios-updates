@@ -5,6 +5,14 @@ const { ocrFile } = require("./ocr");
 const { searchWeb, formatSearchAnswer } = require("./search");
 const { say } = require("./voice");
 const { kindOf, readTextSnippet, copyIntoUploads, fileToDataUrl } = require("./attach");
+const {
+  looksLikeFaceAsk,
+  facePrompt,
+  parseFaceVision,
+  sanitizeIdentity,
+  publicSearchQuery,
+  formatFaceAnswer,
+} = require("./faces");
 
 function parseVision(raw) {
   const text = String(raw || "").trim();
@@ -68,15 +76,7 @@ function createSight({ dir, captureFn, llm }) {
 
   async function readFrame(question, lang) {
     if (!has() || last.kind !== "image") return null;
-    const inLang = lang === "en" ? "English" : lang === "es" ? "Spanish" : "the user's language";
-    const prompt = [
-      `You are Jarvis. Describe Señor's image in ${inLang}. Warm, brief, not theatrical.`,
-      "If there is a person, say who they appear to be (name if obvious, else a description).",
-      "Final line exactly: BUSCAR: <short web query for the main subject>.",
-      question ? `Señor: ${question}` : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const prompt = facePrompt(lang, question);
 
     const vision = await visionRead({
       apiKey: llm.apiKey,
@@ -86,10 +86,11 @@ function createSight({ dir, captureFn, llm }) {
       prompt,
     });
     if (vision) {
-      const parsed = parseVision(vision);
+      const parsed = parseFaceVision(vision);
       last.description = parsed.description;
       last.query = parsed.query;
       last.method = "vision";
+      last.faces = parsed;
       return last;
     }
 
@@ -98,12 +99,14 @@ function createSight({ dir, captureFn, llm }) {
       last.description = `Texto que pude leer (OCR local): ${ocr}`;
       last.query = ocr.slice(0, 90);
       last.method = "ocr";
+      last.faces = { count: 0, ids: [], unknown: true, description: last.description, query: "" };
       return last;
     }
 
     last.description = "";
     last.query = "";
     last.method = "none";
+    last.faces = { count: 0, ids: [], unknown: true, description: "", query: "" };
     return last;
   }
 
@@ -143,18 +146,31 @@ function createSight({ dir, captureFn, llm }) {
     }
 
     await readFrame(question, extras && extras.lang);
-    if (!last.description) {
+    const lang = extras && extras.lang;
+    const faceAsk = looksLikeFaceAsk(question) || (last.faces && last.faces.count > 0);
+    if (!last.description && !(last.faces && last.faces.count)) {
       return say(
-        extras && extras.lang === "en"
-          ? "I have the image on disk. Vision API or tesseract needed to read it."
-          : "Tengo la imagen en el PC. Falta visión (API) u OCR (tesseract)."
+        lang === "en"
+          ? "I have the image on disk. Vision API needed to read faces. I won't invent a name."
+          : "Tengo la imagen en el PC. Falta visión (API) para caras. No invento un nombre."
       );
+    }
+
+    const report = last.faces || parseFaceVision(last.description || "");
+    const searchQ = faceAsk ? publicSearchQuery(report) : last.query || question || "";
+    let web = "";
+    if (searchQ && !report.unknown) {
+      const results = await searchWeb(searchQ);
+      web = formatSearchAnswer(searchQ, results, lang);
+    }
+    if (faceAsk || (report.count && report.count > 0)) {
+      return sanitizeIdentity(formatFaceAnswer(lang, report, web));
     }
 
     const q = last.query || question || "what's in the image";
     const results = await searchWeb(q);
-    const web = formatSearchAnswer(q, results, extras && extras.lang);
-    return say(last.description, web);
+    const web2 = formatSearchAnswer(q, results, lang);
+    return sanitizeIdentity(say(last.description, web2));
   }
 
   async function lookAndAnswer(question, extras) {

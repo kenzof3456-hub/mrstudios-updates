@@ -106,7 +106,7 @@ function detectCore(raw) {
   }
 
   if (
-    /(esto|eso|en (la )?pantalla|esta captura|lo que (ves|estas viendo)|esta persona|quien es (este|esta|ese|esa)|busca (esto|eso))/.test(
+    /(esto|eso|en (la )?pantalla|esta captura|lo que (ves|estas viendo)|esta persona|quien es (este|esta|ese|esa)|who is (this|that)( person| man| woman)?|busca (esto|eso))/.test(
       t
     )
   ) {

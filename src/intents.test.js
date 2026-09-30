@@ -22,6 +22,8 @@ const cases = [
   ["mira esta foto", "look_attach"],
   ["mira la pantalla y busca quién es", "look_ask"],
   ["qué es esto", "screen_ask"],
+  ["quién es esta persona", "screen_ask"],
+  ["who is this person", "screen_ask"],
   ["manda un mensaje a mamá por WhatsApp que ya voy", "send_message"],
   ["dile a Pedro que llegué", "send_message"],
   ["habla con voz de Jorge", "set_voice"],
