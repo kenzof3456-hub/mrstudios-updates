@@ -1,14 +1,42 @@
 (() => {
   const canvas = document.getElementById("orb");
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { alpha: false });
   let state = "idle";
   let level = 0;
   let target = 0;
   let t0 = performance.now();
-  const ripples = [];
+  let dpr = 1;
+
+  const meridians = 18;
+  const parallels = 11;
+  const ringCount = 6;
+  const sparkN = 220;
+  const sparks = [];
+
+  for (let i = 0; i < sparkN; i++) {
+    sparks.push({
+      theta: Math.random() * Math.PI * 2,
+      phi: Math.acos(2 * Math.random() - 1),
+      speed: 0.18 + Math.random() * 0.55,
+      orbit: 0.82 + Math.random() * 0.38,
+      trail: Math.random() * Math.PI * 2,
+      size: 0.6 + Math.random() * 1.8,
+    });
+  }
+
+  const rings = [];
+  for (let i = 0; i < ringCount; i++) {
+    rings.push({
+      ax: (i * 0.7 + 0.2) % Math.PI,
+      ay: (i * 1.1 + 0.4) % Math.PI,
+      az: i * 0.55,
+      speed: 0.12 + i * 0.045,
+      tilt: 0.35 + (i % 3) * 0.22,
+    });
+  }
 
   function resize() {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.floor(innerWidth * dpr);
     canvas.height = Math.floor(innerHeight * dpr);
     canvas.style.width = innerWidth + "px";
@@ -21,15 +49,50 @@
   function setState(next) {
     state = next;
     document.body.dataset.mode = next;
-    if (next === "speak") {
-      for (let i = 0; i < 3; i++) {
-        ripples.push({ born: performance.now() + i * 120, life: 1400 });
-      }
-    }
   }
 
   function setLevel(n) {
     target = Math.max(0, Math.min(1, n));
+  }
+
+  function rotX(p, a) {
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
+  }
+  function rotY(p, a) {
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
+  }
+  function rotZ(p, a) {
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    return { x: p.x * c - p.y * s, y: p.x * s + p.y * c, z: p.z };
+  }
+
+  function sph(theta, phi, r) {
+    return {
+      x: r * Math.sin(phi) * Math.cos(theta),
+      y: r * Math.cos(phi),
+      z: r * Math.sin(phi) * Math.sin(theta),
+    };
+  }
+
+  function project(p, cx, cy, scale) {
+    const z = p.z + 3.2;
+    const f = scale / z;
+    return { x: cx + p.x * f, y: cy + p.y * f, z: p.z, a: Math.max(0.08, (p.z + 1.15) / 2.2) };
+  }
+
+  function drawPolyline(pts, stroke, width) {
+    if (pts.length < 2) return;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
   }
 
   function draw(now) {
@@ -37,109 +100,159 @@
     const h = innerHeight;
     const cx = w / 2;
     const cy = h * 0.46;
-    const dt = now - t0;
+    const dt = Math.min(40, now - t0);
     t0 = now;
-    level += (target - level) * Math.min(1, dt / 80);
+    const t = now / 1000;
+    level += (target - level) * Math.min(1, dt / 90);
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#02050a";
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#03060c";
     ctx.fillRect(0, 0, w, h);
 
-    const idlePulse = 0.5 + 0.5 * Math.sin(now / 900);
-    let radius = 78;
-    let glow = 0.35;
+    const room = ctx.createRadialGradient(cx, cy, 40, cx, cy * 1.4, Math.max(w, h) * 0.72);
+    room.addColorStop(0, "rgba(8, 28, 48, 0.55)");
+    room.addColorStop(0.45, "rgba(4, 10, 18, 0.2)");
+    room.addColorStop(1, "rgba(1, 2, 6, 0)");
+    ctx.fillStyle = room;
+    ctx.fillRect(0, 0, w, h);
+
+    let ringTight = 1;
+    let rotSpeed = 0.22;
+    let sparkAmt = 0.35;
+    let wave = 0;
     if (state === "idle") {
-      radius += idlePulse * 6;
-      glow = 0.28 + idlePulse * 0.12;
-      target = idlePulse * 0.15;
+      target = 0.08 + 0.06 * Math.sin(t * 0.7);
+      sparkAmt = 0.28;
     } else if (state === "listen") {
-      radius += 4 * Math.sin(now / 220);
-      glow = 0.55;
-      target = 0.35 + 0.2 * Math.sin(now / 180);
+      ringTight = 0.72 + 0.04 * Math.sin(t * 6);
+      rotSpeed = 0.55;
+      sparkAmt = 0.55;
+      target = 0.4 + 0.15 * Math.sin(t * 8);
     } else {
-      radius += 10 + level * 28;
-      glow = 0.45 + level * 0.5;
-      if (now % 280 < 16) ripples.push({ born: now, life: 1200 + level * 400 });
+      ringTight = 1.04 + level * 0.08;
+      rotSpeed = 0.85 + level * 0.7;
+      sparkAmt = 0.75 + level * 0.4;
+      wave = 0.55 + level * 1.1;
+      target = Math.max(target, 0.35);
     }
 
-    const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, radius * 4.2);
-    g.addColorStop(0, `rgba(120, 220, 255, ${0.16 + glow * 0.25})`);
-    g.addColorStop(0.35, "rgba(20, 70, 110, 0.18)");
-    g.addColorStop(1, "rgba(2, 5, 10, 0)");
-    ctx.fillStyle = g;
+    const yaw = t * rotSpeed;
+    const pitch = Math.sin(t * 0.17) * 0.18;
+    const baseR = Math.min(w, h) * 0.34;
+    const scale = baseR * 1.85;
+
+    function xf(p) {
+      let q = rotY(p, yaw);
+      q = rotX(q, pitch);
+      return project(q, cx, cy, scale);
+    }
+
+    const bloom = ctx.createRadialGradient(cx, cy, 6, cx, cy, baseR * 2.4);
+    bloom.addColorStop(0, `rgba(160, 230, 255, ${0.14 + level * 0.18})`);
+    bloom.addColorStop(0.25, `rgba(40, 160, 220, ${0.1 + level * 0.12})`);
+    bloom.addColorStop(1, "rgba(3, 8, 16, 0)");
+    ctx.fillStyle = bloom;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius * 4.2, 0, Math.PI * 2);
+    ctx.arc(cx, cy, baseR * 2.4, 0, Math.PI * 2);
     ctx.fill();
 
-    const core = ctx.createRadialGradient(
-      cx - radius * 0.25,
-      cy - radius * 0.3,
-      4,
-      cx,
-      cy,
-      radius
-    );
-    core.addColorStop(0, "#e7fbff");
-    core.addColorStop(0.25, "#7adfff");
-    core.addColorStop(0.7, "#1a8ec4");
-    core.addColorStop(1, "#06304a");
-    ctx.shadowColor = `rgba(80, 210, 255, ${0.6 + glow})`;
-    ctx.shadowBlur = 40 + glow * 50;
+    ctx.globalCompositeOperation = "lighter";
+
+    const coreR = baseR * 0.16 * (1 + level * 0.35);
+    const core = ctx.createRadialGradient(cx - 6, cy - 8, 2, cx, cy, coreR * 2.2);
+    core.addColorStop(0, "rgba(230, 252, 255, 0.95)");
+    core.addColorStop(0.35, "rgba(90, 210, 255, 0.55)");
+    core.addColorStop(1, "rgba(20, 80, 140, 0)");
     ctx.fillStyle = core;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, coreR * 2.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
 
-    ctx.strokeStyle = "rgba(180, 240, 255, 0.35)";
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
 
-    if (state === "listen") {
-      for (let i = 0; i < 4; i++) {
-        const k = (now / 900 + i / 4) % 1;
-        const r = radius * (1.15 + (1 - k) * 1.35);
-        ctx.strokeStyle = `rgba(90, 210, 255, ${0.45 * k})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.stroke();
+    for (let m = 0; m < meridians; m++) {
+      const theta = (m / meridians) * Math.PI * 2;
+      const pts = [];
+      const n = 40;
+      for (let i = 0; i <= n; i++) {
+        const phi = (i / n) * Math.PI;
+        const pr = xf(sph(theta, phi, ringTight));
+        pts.push(pr);
+        if (wave > 0.1) {
+          const pulse = 0.5 + 0.5 * Math.sin(phi * 8 - t * 10 + m);
+          if (i > 0 && pulse > 0.72) {
+            ctx.strokeStyle = `rgba(140, 230, 255, ${0.18 * pulse * wave * pr.a})`;
+            ctx.lineWidth = 2.4 * pulse * (0.6 + level);
+            ctx.beginPath();
+            ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+            ctx.lineTo(pr.x, pr.y);
+            ctx.stroke();
+          }
+        }
       }
+      drawPolyline(
+        pts,
+        `rgba(90, 200, 255, ${0.16 + 0.22 * (state === "speak" ? level : 0.35)})`,
+        0.7
+      );
     }
 
-    const keep = [];
-    for (const rip of ripples) {
-      const age = now - rip.born;
-      if (age < 0 || age > rip.life) continue;
-      const p = age / rip.life;
-      const r = radius + p * (90 + level * 80);
-      ctx.strokeStyle = `rgba(90, 210, 255, ${(1 - p) * (0.25 + level * 0.55)})`;
-      ctx.lineWidth = 3 * (1 - p) * (1 + level);
+    for (let p = 1; p < parallels; p++) {
+      const phi = (p / parallels) * Math.PI;
+      const pts = [];
+      const n = 64;
+      for (let i = 0; i <= n; i++) {
+        const theta = (i / n) * Math.PI * 2;
+        pts.push(xf(sph(theta, phi, ringTight)));
+      }
+      drawPolyline(pts, "rgba(70, 180, 230, 0.2)", 0.65);
+    }
+
+    for (let r = 0; r < rings.length; r++) {
+      const ring = rings[r];
+      const spin = t * ring.speed * (state === "listen" ? 1.8 : 1) + ring.az;
+      const pts = [];
+      const n = 96;
+      const rad = ringTight * (0.92 + (r % 3) * 0.06);
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        let p = { x: Math.cos(a) * rad, y: Math.sin(a) * rad * 0.18, z: Math.sin(a) * rad };
+        p = rotX(p, ring.ax + ring.tilt);
+        p = rotY(p, ring.ay + spin);
+        pts.push(xf(p));
+      }
+      const alpha = 0.28 + (r % 2) * 0.12 + (state === "listen" ? 0.18 : 0);
+      drawPolyline(pts, `rgba(120, 220, 255, ${alpha})`, 1.15 + (r === 0 ? 0.6 : 0));
+      drawPolyline(pts, `rgba(200, 245, 255, ${alpha * 0.35})`, 0.45);
+    }
+
+    for (const s of sparks) {
+      s.theta += s.speed * 0.012 * (state === "idle" ? 0.7 : 1.4);
+      s.trail += 0.04;
+      const show = Math.sin(s.trail + t) * 0.5 + 0.5;
+      if (show < 1 - sparkAmt && state === "idle") continue;
+      const p = xf(sph(s.theta, s.phi, s.orbit * ringTight));
+      const glow = (0.35 + show * 0.65) * p.a * sparkAmt;
+      ctx.fillStyle = `rgba(170, 235, 255, ${Math.min(0.95, glow)})`;
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, s.size * (0.7 + show), 0, Math.PI * 2);
+      ctx.fill();
+      const back = xf(sph(s.theta - 0.18, s.phi, s.orbit * ringTight));
+      ctx.strokeStyle = `rgba(80, 190, 255, ${glow * 0.45})`;
+      ctx.lineWidth = s.size * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(back.x, back.y);
+      ctx.lineTo(p.x, p.y);
       ctx.stroke();
-      keep.push(rip);
     }
-    ripples.length = 0;
-    ripples.push(...keep.slice(-14));
 
-    if (state === "speak") {
-      const bars = 28;
-      for (let i = 0; i < bars; i++) {
-        const ang = (i / bars) * Math.PI * 2 + now / 700;
-        const amp = (0.35 + 0.65 * level) * (0.55 + 0.45 * Math.abs(Math.sin(now / 90 + i)));
-        const inner = radius + 10;
-        const outer = inner + 8 + amp * 42;
-        ctx.strokeStyle = `rgba(120, 230, 255, ${0.25 + amp * 0.5})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
-        ctx.lineTo(cx + Math.cos(ang) * outer, cy + Math.sin(ang) * outer);
-        ctx.stroke();
-      }
-    }
+    ctx.globalCompositeOperation = "source-over";
+    const vig = ctx.createRadialGradient(cx, cy, baseR * 0.8, cx, cy, Math.max(w, h) * 0.7);
+    vig.addColorStop(0, "rgba(0,0,0,0)");
+    vig.addColorStop(1, "rgba(2, 4, 8, 0.55)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, w, h);
 
     requestAnimationFrame(draw);
   }
