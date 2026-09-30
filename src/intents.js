@@ -23,6 +23,10 @@ function detectCore(raw) {
   const t = normalize(raw);
   if (!t) return { type: "empty" };
 
+  if (/^(hola|hello|hi)(\s+(jarvis|senor))?[\s.!?]*$/.test(t)) {
+    return { type: "hello" };
+  }
+
   if (
     /(olvida(lo)? todo|borra (todo )?lo que sabes|borra toda la memoria|reset(ea)? (la )?memoria|forget everything)/.test(
       t

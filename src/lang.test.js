@@ -5,7 +5,9 @@ assert.strictEqual(detectLanguage("qué hora es"), "es");
 assert.strictEqual(detectLanguage("what time is it"), "en");
 assert.strictEqual(detectLanguage("bonjour comment allez vous merci"), "fr");
 assert.strictEqual(detectLanguage(""), "es");
-assert.strictEqual(detectLanguage("hello", "en"), "en");
+assert.strictEqual(detectLanguage("hello"), "en");
+assert.strictEqual(detectLanguage("hola"), "es");
+assert.strictEqual(detectLanguage("hi"), "en");
 assert.strictEqual(localeFor("en"), "en-GB");
 
 const v = ttsVoiceFor({

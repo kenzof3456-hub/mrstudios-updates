@@ -44,6 +44,25 @@ const llm = { apiKey: "", baseUrl: "", model: "" };
   assert.match(who.reply, /Señor/);
   assert.doesNotMatch(who.reply, /Rabbit/);
 
+  const hi = await handleTurn({
+    text: "hola",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(hi.intent, "hello");
+  assert.strictEqual(hi.reply, "Hola, Señor.");
+  const hello = await handleTurn({
+    text: "hello",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(hello.intent, "hello");
+  assert.strictEqual(hello.reply, "Hello, Señor.");
+
   const c = await handleTurn({
     text: "olvida Discord",
     history: [],

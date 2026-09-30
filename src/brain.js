@@ -96,6 +96,15 @@ async function handleTurn({
     }
   }
 
+  if (intent.type === "hello") {
+    const who = address(profile);
+    return {
+      reply: lang === "en" ? `Hello, ${who}.` : `Hola, ${who}.`,
+      intent: intent.type,
+      language: lang,
+    };
+  }
+
   if (intent.type === "empty") {
     return {
       reply: say(tx(lang, "Te escucho.", "I'm listening.")),

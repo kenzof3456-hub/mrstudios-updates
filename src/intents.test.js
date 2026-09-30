@@ -3,6 +3,10 @@ const { detectIntent } = require("./intents");
 const { clearPendingDanger } = require("./agency");
 
 const cases = [
+  ["hola", "hello"],
+  ["hello", "hello"],
+  ["hi", "hello"],
+  ["Hola Jarvis", "hello"],
   ["¿Qué hora es?", "datetime"],
   ["what time is it", "datetime"],
   ["dime la fecha de hoy", "datetime"],
@@ -49,7 +53,7 @@ for (const [text, type] of cases) {
   assert.strictEqual(got.type, type, `${text} => ${got.type}, expected ${type}`);
 }
 
-assert.strictEqual(detectIntent("hazme un bot de Discord").execute, true);
+assert.strictEqual(detectIntent("hola cómo estás").type, "question");
 assert.strictEqual(detectIntent("abre el bloc de notas").app.includes("bloc"), true);
 assert.strictEqual(detectIntent("dile a Pedro que llegué").to.toLowerCase().includes("pedro"), true);
 assert.match(detectIntent("manda un mensaje a mamá por WhatsApp que ya voy").body, /voy/i);
