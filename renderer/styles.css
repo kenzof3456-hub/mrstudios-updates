@@ -248,6 +248,8 @@ body {
   flex-direction: column;
   gap: 4px;
   padding: 8px;
+  max-height: min(420px, 58vh);
+  overflow-y: auto;
   background: rgba(4, 10, 18, 0.92);
   border: 1px solid rgba(78, 203, 255, 0.2);
 }
