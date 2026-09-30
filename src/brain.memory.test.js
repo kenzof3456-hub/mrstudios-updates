@@ -21,6 +21,7 @@ const llm = { apiKey: "", baseUrl: "", model: "" };
   });
   assert.strictEqual(a.intent, "remember");
   assert.match(a.reply, /Apuntado/);
+  assert.match(a.reply, /\n/);
 
   const b = await handleTurn({
     text: "qué sabes de mí",

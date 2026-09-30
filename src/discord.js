@@ -1,4 +1,5 @@
 const { isWindows, launchDiscord, isProcessRunning, runPowershell } = require("./windows-apps");
+const { say } = require("./voice");
 
 const CAMERA_KEYBIND = "Ctrl+Shift+V";
 
@@ -7,9 +8,11 @@ async function enableDiscordCamera() {
     return {
       ok: false,
       did: "none",
-      message:
-        "¡Ojo, Rabbit! El control de la cámara de Discord solo corre en tu PC Windows. " +
-        "Allí abro Discord y mando el atajo de alternar cámara. Aquí no puedo tocarla, pero ya quedó anotado el plan.",
+      message: say(
+        "¡Ojo, Rabbit!",
+        "La cámara de Discord la controlo en tu Windows, no aquí.",
+        "Allí abro Discord y mando Ctrl+Shift+V. Promesa."
+      ),
     };
   }
 
@@ -37,23 +40,26 @@ Write-Output 'sent'
     return {
       ok: true,
       did: "launch_focus_toggle_camera",
-      message:
-        (already ? "Discord ya estaba abierto, qué suerte. " : "¡Abrí Discord! ") +
-        `Enfoqué la ventana y envié ${CAMERA_KEYBIND} (Toggle Camera). ` +
-        "Discord no deja forzar ni leer la webcam, así que esto es lo más cercano que funciona. " +
-        `Si no se encendió, Rabbit, en Ajustes → Atajos asigna «Activar cámara» a ${CAMERA_KEYBIND} y me avisas.`,
+      message: say(
+        already ? "¡Discord ya estaba despierto!" : "¡Abrí Discord!",
+        `Enfoqué la ventana y mandé ${CAMERA_KEYBIND} (cámara).`,
+        "Ojo: Discord no deja forzar ni leer la webcam. Esto es lo más cerca que llega.",
+        `Si no se encendió, asigna «Activar cámara» a ${CAMERA_KEYBIND} y me avisas, Rabbit.`
+      ),
     };
   }
 
   return {
     ok: Boolean(launch.ok || already),
     did: already || launch.ok ? "opened_discord_only" : "failed",
-    message:
-      (already || launch.ok
-        ? "Encontré Discord, pero no pude enviar el atajo de cámara (la ventana a veces tarda). "
-        : "No pude abrir Discord esta vez. ") +
-      `Atajo: ${CAMERA_KEYBIND}. No hay forma fiable de forzar la cámara. ` +
-      "Asigna ese atajo en Discord y lo volvemos a intentar, Rabbit.",
+    message: say(
+      already || launch.ok ? "Casi… encontré Discord." : "Ay. Discord no quiso abrir.",
+      already || launch.ok
+        ? "No pude mandar el atajo. A veces la ventana tarda."
+        : "Sin ventana, no hay cámara.",
+      `Atajo: ${CAMERA_KEYBIND}. No hay forma fiable de forzar la cam.`,
+      "Lo intentamos otra vez cuando quieras, Rabbit."
+    ),
   };
 }
 

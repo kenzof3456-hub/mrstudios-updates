@@ -1,5 +1,6 @@
 const https = require("https");
 const { URL } = require("url");
+const { say } = require("./voice");
 
 function fetchText(urlString) {
   return new Promise((resolve, reject) => {
@@ -85,14 +86,22 @@ function searchWeb(query) {
 
 function formatSearchAnswer(query, results) {
   if (!results.length) {
-    return `Uy, Rabbit, busqué «${query}» y ahora mismo no me devolvieron resultados. ¿Probamos con otras palabras?`;
+    return say(
+      "¡Rayos!",
+      `Busqué «${query}» y la red no me dio nada.`,
+      "¿Otras palabras, Rabbit?"
+    );
   }
   const lines = results.slice(0, 3).map((r, i) => `${i + 1}. ${r.snippet || r.title}`);
   const cites = results
     .slice(0, 3)
     .map((r) => r.url)
     .join(" · ");
-  return `¡Buena pregunta, Rabbit! Esto encontré sobre «${query}»:\n\n${lines.join("\n")}\n\nFuentes: ${cites}`;
+  return say(
+    "¡Buena pregunta, Rabbit!",
+    `Esto pesqué sobre «${query}»:\n${lines.join("\n")}`,
+    `Fuentes: ${cites}`
+  );
 }
 
 module.exports = { searchWeb, formatSearchAnswer };

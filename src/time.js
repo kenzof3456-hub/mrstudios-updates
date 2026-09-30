@@ -1,3 +1,5 @@
+const { say } = require("./voice");
+
 function formatNow(locale = "es-MX") {
   const now = new Date();
   const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(now);
@@ -19,7 +21,11 @@ function formatNow(locale = "es-MX") {
     date,
     time,
     timeZone: tz,
-    text: `¡Ahí te va, Rabbit! Son las ${time}. Hoy es ${cap}, ${date} (zona ${tz}).`,
+    text: say(
+      "¡Tic-tac, Rabbit!",
+      `Son las ${time}.`,
+      `Hoy es ${cap}, ${date} (zona ${tz}).`
+    ),
   };
 }
 

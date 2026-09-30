@@ -36,10 +36,11 @@ function saveProfile(userDataDir, profile) {
 }
 
 function describeProfile(profile) {
-  return (
-    `Rabbit, eres ${profile.realName} y te hablo siempre como ${profile.nickname}. ` +
-    `Tu sistema es ${profile.os}. Me encanta tenerte por aquí.`
-  );
+  return [
+    `Eres ${profile.realName}.`,
+    `Te hablo como ${profile.nickname}. Siempre.`,
+    `Sistema: ${profile.os}. ¡Y me encanta tenerte aquí!`,
+  ].join("\n");
 }
 
 module.exports = {

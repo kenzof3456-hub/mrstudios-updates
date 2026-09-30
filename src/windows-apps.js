@@ -2,6 +2,7 @@ const { execFile } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { say } = require("./voice");
 
 const isWindows = process.platform === "win32";
 
@@ -110,7 +111,11 @@ async function openApp(appName) {
   if (!isWindows) {
     return {
       ok: false,
-      message: `Rabbit, abrir apps es magia de tu PC Windows. Pediste abrir: ${appName}. En cuanto estemos ahí, lo lanzo.`,
+      message: say(
+        "¡Ojo, Rabbit!",
+        `Abrir «${appName}» es cosa de tu Windows.`,
+        "En cuanto estemos en tu PC… ¡lo lanzo yo!"
+      ),
     };
   }
 
@@ -120,8 +125,12 @@ async function openApp(appName) {
     return {
       ok: r.ok,
       message: r.ok
-        ? "¡Dale, Rabbit! Estoy abriendo Discord."
-        : `Uy, no pude lanzar Discord (${r.stderr || "error"}). Lo reintentamos cuando quieras.`,
+        ? say("¡Dale, Rabbit!", "Abriendo Discord…", "Un segundo y estás dentro.")
+        : say(
+            "Ay, no…",
+            `Discord no quiso arrancar (${r.stderr || "error"}).`,
+            "Lo reintentamos cuando quieras. No pasa nada."
+          ),
     };
   }
 
@@ -130,7 +139,7 @@ async function openApp(appName) {
       `Start-Process -FilePath '${known.exe.replace(/'/g, "''")}'`
     );
     if (r.ok) {
-      return { ok: true, message: `¡Hecho, Rabbit! Abrí ${appName}.` };
+      return { ok: true, message: say("¡Boom!", `Abrí ${appName}.`, "¿Seguimos, Rabbit?") };
     }
   }
 
@@ -146,11 +155,15 @@ Write-Output $app.Name
   const r = await runPowershell(script);
   if (r.ok) {
     const name = r.stdout || appName;
-    return { ok: true, message: `¡Hecho, Rabbit! Abrí ${name}.` };
+    return { ok: true, message: say("¡Listo!", `Abrí ${name}.`, "A jugar, Rabbit.") };
   }
   return {
     ok: false,
-    message: `No pude abrir «${appName}», Rabbit. ${r.stderr || r.stdout || "No está en Inicio ni en rutas conocidas."} Si me dices el nombre exacto, lo vuelvo a intentar.`,
+    message: say(
+      "Mmm, no la encuentro.",
+      `«${appName}» no salió en Inicio ni en mis rutas.`,
+      r.stderr || r.stdout || "Si me das el nombre exacto, Rabbit, lo intento otra vez."
+    ),
   };
 }
 
@@ -158,7 +171,11 @@ async function closeApp(appName) {
   if (!isWindows) {
     return {
       ok: false,
-      message: `Cerrar apps también es cosa de tu Windows, Rabbit. Pediste cerrar: ${appName}.`,
+      message: say(
+        "¡Cuidado, Rabbit!",
+        `Cerrar «${appName}» solo lo puedo hacer en tu Windows.`,
+        "Allí… un toque y desaparece."
+      ),
     };
   }
 
@@ -175,13 +192,17 @@ async function closeApp(appName) {
       `Stop-Process -Name '${image.replace(/\.exe$/i, "").replace(/'/g, "''")}' -Force -ErrorAction SilentlyContinue; taskkill /IM '${image.replace(/'/g, "''")}' /F 2>$null; Write-Output 'ok'`
     );
     if (r.ok) {
-      return { ok: true, message: `Listo, Rabbit. Cerré ${appName}. Un clic y se fue.` };
+      return { ok: true, message: say("¡Ya está!", `Cerré ${appName}.`, "Silencio en el escritorio.") };
     }
   }
 
   return {
     ok: false,
-    message: `No pude cerrar «${appName}», Rabbit. Puede que no estuviera en ejecución. Si sigue ahí, dime y lo intentamos otra vez.`,
+    message: say(
+      "Raro…",
+      `No pude cerrar «${appName}».`,
+      "¿Seguro que estaba abierta, Rabbit? Si sigue ahí, lo cazamos otra vez."
+    ),
   };
 }
 
