@@ -8,8 +8,14 @@ function flatten(text) {
 const SKIP = /helena|sabina|elvira|monica|laura|pilar|paulina|zira|hazel|susan|nova|shimmer/i;
 const PREFER = /ollie|george|ryan|daniel|alvaro|jorge|pablo|diego|united kingdom|en-gb/i;
 
-function pickJarvisVoice() {
+function pickJarvisVoice(preferredName) {
   const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  if (preferredName) {
+    const hit = voices.find(
+      (v) => v.name === preferredName || (v.name && v.name.toLowerCase().includes(String(preferredName).toLowerCase()))
+    );
+    if (hit) return hit;
+  }
   let best = null;
   let bestScore = -1;
   for (const v of voices) {
@@ -95,7 +101,7 @@ function fakeEnvelope(text, onLevel) {
   };
 }
 
-function speakBrowser(text, onLevel) {
+function speakBrowser(text, onLevel, plan) {
   return new Promise((resolve) => {
     if (!window.speechSynthesis) {
       resolve(false);
@@ -117,12 +123,15 @@ function speakBrowser(text, onLevel) {
       noVoices ? 600 : Math.min(12000, 800 + spoken.length * 80)
     );
     const u = new SpeechSynthesisUtterance(spoken);
-    u.lang = "es-ES";
+    u.lang = (plan && plan.lang) || "es-ES";
     u.rate = 0.96;
     u.pitch = 0.9;
     u.volume = 1;
-    const voice = pickJarvisVoice();
-    if (voice) u.voice = voice;
+    const voice = pickJarvisVoice(plan && plan.voice);
+    if (voice) {
+      u.voice = voice;
+      if (voice.lang) u.lang = voice.lang;
+    }
     u.onend = () => finish(true);
     u.onerror = () => finish(false);
     try {
@@ -169,13 +178,17 @@ async function speakOut(text, onLevel) {
     const ok = await playBase64Mp3(plan.audio, onLevel);
     if (ok) return plan.method;
   }
+  if (plan.method === "browser") {
+    const local = await speakBrowser(text, onLevel, plan);
+    if (local) return "browser";
+  }
   if (window.__jarvisIsWindows) {
     const stop = fakeEnvelope(text, onLevel);
-    const sapi = await window.jarvis.sapi(text);
+    const sapi = await window.jarvis.sapi(text, plan.sapiVoice || "");
     stop();
     if (sapi && sapi.ok) return "sapi";
   }
-  const local = await speakBrowser(text, onLevel);
+  const local = await speakBrowser(text, onLevel, plan);
   if (local) return "browser";
   return "none";
 }

@@ -193,6 +193,13 @@ function createSight({ dir, captureFn, llm }) {
         web
       );
     }
+    if (last.kind === "audio") {
+      return say(
+        "Oigo el archivo, Rabbit, pero no clono voces de personas ni famosos.",
+        "Elige una voz legal en el selector de arriba o dime «habla con voz de Jorge».",
+        "Catálogo: Edge neural, OpenAI y las voces de Windows."
+      );
+    }
     return say(
       `Guardé «${last.name}» en tu PC.`,
       "No extraigo Word/PDF/binarios en v1. Si es una foto o un .txt, ahí sí me lanzo.",

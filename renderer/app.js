@@ -12,6 +12,7 @@ const ear = document.getElementById("ear");
 const alwaysBtn = document.getElementById("mic-always");
 const pttBtn = document.getElementById("mic-ptt");
 const caption = document.getElementById("caption");
+const voicePick = document.getElementById("voice-pick");
 
 const history = [];
 let speaking = false;
@@ -97,6 +98,7 @@ async function send(text) {
     addMsg("jarvis", reply);
     history.push({ role: "assistant", content: reply });
     if (useAttach) hideAttach();
+    if (res.voice) await fillVoices();
     await talk(reply);
   } catch (err) {
     const msg = "Fallo de enlace, Rabbit: " + err.message;
@@ -153,14 +155,56 @@ async function armMic() {
   }
 }
 
+async function fillVoices() {
+  if (!voicePick || !window.jarvis.voices) return;
+  voicePick.dataset.filling = "1";
+  try {
+    if (window.waitVoices) await window.waitVoices();
+    const syn = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    if (window.jarvis.reportBrowserVoices) {
+      await window.jarvis.reportBrowserVoices(syn.map((v) => ({ name: v.name, lang: v.lang })));
+    }
+    const data = await window.jarvis.voices();
+    const groups = {};
+    for (const v of data.list || []) {
+      const g = v.engine || "otro";
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(v);
+    }
+    voicePick.innerHTML = "";
+    for (const eng of Object.keys(groups)) {
+      const og = document.createElement("optgroup");
+      og.label = eng;
+      for (const v of groups[eng]) {
+        const o = document.createElement("option");
+        o.value = (v.engine || "") + "::" + v.id;
+        o.textContent = v.label + (v.lang ? " · " + v.lang : "");
+        o.dataset.engine = v.engine || "";
+        o.dataset.id = v.id;
+        o.dataset.label = v.label || v.id;
+        o.dataset.lang = v.lang || "";
+        o.dataset.gender = v.gender || "";
+        og.appendChild(o);
+      }
+      voicePick.appendChild(og);
+    }
+    if (data.current && data.current.id) {
+      voicePick.value = (data.current.engine || "") + "::" + data.current.id;
+    }
+  } finally {
+    delete voicePick.dataset.filling;
+  }
+}
+
 async function boot() {
   applyOrb();
   try {
     const s = await window.jarvis.status();
     if (!s.isWindows) pill.textContent = "DEV";
     window.__jarvisIsWindows = Boolean(s.isWindows);
-    addMsg("jarvis", s.greeting);
     if (window.waitVoices) await window.waitVoices();
+    await fillVoices();
+    addMsg("jarvis", s.greeting);
     await talk(s.greeting);
   } catch (err) {
     addMsg("jarvis", "No pude iniciar el núcleo: " + err.message);
@@ -200,6 +244,22 @@ attachBtn.addEventListener("click", async () => {
 });
 
 attachClear.addEventListener("click", () => hideAttach());
+
+if (voicePick) {
+  voicePick.addEventListener("change", async () => {
+    if (voicePick.dataset.filling) return;
+    const o = voicePick.selectedOptions[0];
+    if (!o || !o.dataset.id) return;
+    await window.jarvis.setVoice({
+      engine: o.dataset.engine,
+      id: o.dataset.id,
+      label: o.dataset.label,
+      lang: o.dataset.lang,
+      gender: o.dataset.gender,
+    });
+    await talk("Así sueno ahora, Rabbit. " + o.dataset.label + ".");
+  });
+}
 
 for (const btn of document.querySelectorAll(".chips button[data-q]")) {
   btn.addEventListener("click", () => send(btn.dataset.q));

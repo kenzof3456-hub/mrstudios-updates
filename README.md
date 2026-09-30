@@ -32,6 +32,7 @@ Tono: alegre y **expresivo**. UI: esfera azul central (pulso en reposo, anillos 
    - Con `OPENAI_API_KEY`: **`fable`** (varón británico OpenAI).
    - Windows SAPI: George / Jorge / Pablo / Álvaro (masculino).
    - Chromium `speechSynthesis` con la voz masculina más cercana.
+   - **Cambio de voz:** selector **Voz** arriba (Edge, OpenAI, Windows, Chromium). Di **«habla con voz de Jorge»** / **«cambia la voz a Nova»**. Queda en `profile.json`. No clona famosos ni muestras de audio: solo catálogo legal.
 
 Referencia de personaje (metadatos públicos, no el archivo de audio): el clip [Audio de Jarvis (despertador de cada mañana) parte 3](https://www.youtube.com/watch?v=uneoc9zZan0) de THExMISIOxYT es una alarma fan en español al estilo de J.A.R.V.I.S. de Iron Man (en cine, Paul Bettany). Jarvis **no descarga ni clona** ese audio.
 

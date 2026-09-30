@@ -1,4 +1,5 @@
 const { parseSendMessage } = require("./send-parse");
+const { parseVoiceCommand } = require("./voices");
 
 function normalize(text) {
   return String(text || "")
@@ -59,6 +60,9 @@ function detectIntent(raw) {
 
   const send = parseSendMessage(raw);
   if (send) return send;
+
+  const voiceCmd = parseVoiceCommand(raw);
+  if (voiceCmd) return voiceCmd;
 
   if (
     /(mira esto|mira esta foto|mira esta imagen|mira este archivo|mira el archivo|esta foto|este adjunto)/.test(

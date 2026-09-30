@@ -6,6 +6,13 @@ const DEFAULT_PROFILE = {
   nickname: "Rabbit",
   os: "Windows",
   locale: "es-MX",
+  voice: {
+    engine: "edge",
+    id: "es-ES-AlvaroNeural",
+    label: "Álvaro · es-ES",
+    lang: "es-ES",
+    gender: "male",
+  },
 };
 
 function profilePath(userDataDir) {

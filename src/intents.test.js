@@ -22,6 +22,9 @@ const cases = [
   ["qué es esto", "screen_ask"],
   ["manda un mensaje a mamá por WhatsApp que ya voy", "send_message"],
   ["dile a Pedro que llegué", "send_message"],
+  ["habla con voz de Jorge", "set_voice"],
+  ["cambia la voz a Nova", "set_voice"],
+  ["lista las voces", "list_voices"],
 ];
 
 for (const [text, type] of cases) {

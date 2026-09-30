@@ -8,6 +8,7 @@ const { chatWithLlm } = require("./llm");
 const { say, aside } = require("./voice");
 const { parseWake } = require("./wake");
 const { pickWakeLine } = require("./spoken");
+const { resolveVoice, catalog, formatVoiceLine } = require("./voices");
 
 function systemPrompt(profile, memory) {
   return [
@@ -32,6 +33,8 @@ async function handleTurn({
   sight,
   messenger,
   useAttach,
+  setVoice,
+  extraVoices,
 }) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
@@ -67,6 +70,50 @@ async function handleTurn({
     return {
       reply: say("¡Ey, Rabbit!", "Te escucho.", "Tira la orden cuando quieras."),
       intent: intent.type,
+    };
+  }
+
+  if (intent.type === "list_voices") {
+    const lines = catalog(extraVoices)
+      .slice(0, 22)
+      .map((v) => "· " + formatVoiceLine(v));
+    return {
+      reply: say(
+        "¡Claro, Rabbit! Catálogo legal, no clones.",
+        lines.join("\n"),
+        "Dime «habla con voz de Jorge» o usa el selector de arriba."
+      ),
+      intent: intent.type,
+    };
+  }
+
+  if (intent.type === "set_voice") {
+    const found = resolveVoice(intent.query, extraVoices);
+    if (found.celebrity) {
+      return {
+        reply: say("Eso no, Rabbit.", found.reason, "El selector tiene decenas de voces legales."),
+        intent: intent.type,
+      };
+    }
+    if (!found.ok) {
+      return {
+        reply: say(
+          "No la encuentro en el catálogo.",
+          `Busqué «${intent.query}».`,
+          "Prueba Álvaro, Jorge, Ryan, Nova, o «lista las voces»."
+        ),
+        intent: intent.type,
+      };
+    }
+    if (typeof setVoice === "function") setVoice(found.voice);
+    return {
+      reply: say(
+        "¡Cambio hecho!",
+        `Ahora hablo con ${formatVoiceLine(found.voice)}.`,
+        "Lo guardé en tu perfil. Si adjuntas un audio, no lo clono: elige del catálogo."
+      ),
+      intent: intent.type,
+      voice: found.voice,
     };
   }
 
@@ -278,6 +325,7 @@ function greeting(profile, memory) {
     `Son las ${time}. Hoy es ${weekday}, ${date} (${timeZone}).`,
     "Mensajes: «manda a mamá por WhatsApp que ya voy». Si no dices app, miro la memoria o te pregunto una vez.",
     "Fotos y archivos: pulsa Adjuntar. Quedan en el PC; visión solo con tu API.",
+    "Voz: selector arriba, o «habla con voz de Jorge». La de fábrica es Álvaro, estilo mayordomo legal.",
     win,
     wink
   );

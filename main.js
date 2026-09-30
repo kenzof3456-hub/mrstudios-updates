@@ -2,7 +2,7 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen, dialog, nativeImage } = require("electron");
-const { loadProfile } = require("./src/profile");
+const { loadProfile, saveProfile } = require("./src/profile");
 const { createMemory } = require("./src/memory");
 const { createMessenger } = require("./src/messenger");
 const { createSight } = require("./src/sight");
@@ -10,8 +10,9 @@ const { handleTurn, greeting } = require("./src/brain");
 const { isWindows } = require("./src/windows-apps");
 const { parseWake } = require("./src/wake");
 const { pickWakeLine } = require("./src/spoken");
-const { cloudTts, sapiSpeak, edgeTts } = require("./src/tts");
+const { cloudTts, sapiSpeak, edgeTts, listSapiVoices } = require("./src/tts");
 const { JARVIS_TTS } = require("./src/jarvis-voice");
+const { catalog, defaultVoiceChoice } = require("./src/voices");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
@@ -78,8 +79,13 @@ app.whenReady().then(() => {
     ["media", "microphone", "audioCapture", "display-capture"].includes(permission)
   );
 
-  const profile = loadProfile(app.getPath("userData"));
-  const memory = createMemory(path.join(app.getPath("userData"), "memory.json"));
+  const userData = app.getPath("userData");
+  let profile = loadProfile(userData);
+  if (!profile.voice || !profile.voice.id) {
+    profile = { ...profile, voice: defaultVoiceChoice() };
+    saveProfile(userData, profile);
+  }
+  const memory = createMemory(path.join(userData, "memory.json"));
   const llm = {
     apiKey: process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
@@ -99,14 +105,57 @@ app.whenReady().then(() => {
     model: process.env.OPENAI_TTS_MODEL || JARVIS_TTS.openaiModel,
   };
 
+  let browserVoices = [];
+
+  function setVoice(choice) {
+    profile = { ...profile, voice: choice };
+    saveProfile(userData, profile);
+    memory.add(`para hablar usa ${choice.label} (${choice.engine})`);
+    return profile.voice;
+  }
+
+  async function extraVoices() {
+    const sapi = await listSapiVoices();
+    return [...sapi, ...browserVoices];
+  }
+
   ipcMain.handle("jarvis:status", () => ({
     profile,
     isWindows,
     hasLlm: Boolean(llm.apiKey),
     hasCloudTts: Boolean(ttsCfg.apiKey),
-    ttsVoice: JARVIS_TTS.edgeVoices[0],
+    ttsVoice: (profile.voice && profile.voice.id) || JARVIS_TTS.edgeVoices[0],
     greeting: greeting(profile, memory),
   }));
+
+  ipcMain.handle("jarvis:voices", async () => ({
+    current: profile.voice || defaultVoiceChoice(),
+    list: catalog(await extraVoices()),
+  }));
+
+  ipcMain.handle("jarvis:set-voice", (_e, choice) => {
+    if (!choice || !choice.id) return { ok: false };
+    const voice = {
+      engine: choice.engine || "edge",
+      id: String(choice.id),
+      label: String(choice.label || choice.id),
+      lang: choice.lang || "",
+      gender: choice.gender || "",
+    };
+    setVoice(voice);
+    return { ok: true, voice };
+  });
+
+  ipcMain.handle("jarvis:browser-voices", (_e, list) => {
+    browserVoices = (Array.isArray(list) ? list : []).map((v) => ({
+      engine: "browser",
+      id: v.name || v.id,
+      label: v.name || v.id,
+      lang: v.lang || "",
+      gender: "",
+    }));
+    return { ok: true, n: browserVoices.length };
+  });
 
   ipcMain.handle("jarvis:pick-file", async () => {
     const win = BrowserWindow.getAllWindows()[0];
@@ -116,7 +165,7 @@ app.whenReady().then(() => {
       filters: [
         {
           name: "Fotos y documentos",
-          extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "txt", "md", "csv", "json", "log"],
+          extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "txt", "md", "csv", "json", "log", "mp3", "wav", "m4a"],
         },
         { name: "Imágenes", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] },
         { name: "Todos", extensions: ["*"] },
@@ -164,6 +213,8 @@ app.whenReady().then(() => {
       sight,
       messenger,
       useAttach: Boolean(payload?.useAttach),
+      setVoice,
+      extraVoices: await extraVoices(),
     });
   });
 
@@ -172,16 +223,33 @@ app.whenReady().then(() => {
   ipcMain.handle("jarvis:parse-wake", (_e, text) => parseWake(text));
 
   ipcMain.handle("jarvis:speak", async (_e, text) => {
-    const edge = await edgeTts(String(text || ""));
+    const spoken = String(text || "");
+    const choice = profile.voice || defaultVoiceChoice();
+    if (choice.engine === "openai") {
+      const audio = await cloudTts({ ...ttsCfg, text: spoken, voice: choice.id });
+      if (audio) return { method: "cloud", audio, voice: choice.id };
+    }
+    if (choice.engine === "browser") {
+      return { method: "browser", voice: choice.id, lang: choice.lang || "es-ES" };
+    }
+    if (choice.engine === "sapi") {
+      return { method: "local", sapiVoice: choice.id };
+    }
+    const preferred = choice.engine === "edge" ? choice.id : JARVIS_TTS.edgeVoices[0];
+    const edge = await edgeTts(spoken, preferred);
     if (edge && edge.audio) {
       return { method: "edge", audio: edge.audio, voice: edge.voice };
     }
-    const audio = await cloudTts({ ...ttsCfg, text: String(text || "") });
+    const audio = await cloudTts({ ...ttsCfg, text: spoken, voice: ttsCfg.voice });
     if (audio) return { method: "cloud", audio, voice: ttsCfg.voice };
-    return { method: "local" };
+    return { method: "local", sapiVoice: choice.engine === "sapi" ? choice.id : "" };
   });
 
-  ipcMain.handle("jarvis:sapi", async (_e, text) => sapiSpeak(String(text || "")));
+  ipcMain.handle("jarvis:sapi", async (_e, payload) => {
+    const text = typeof payload === "string" ? payload : payload?.text || "";
+    const voiceName = typeof payload === "object" ? payload?.voice : "";
+    return sapiSpeak(text, voiceName);
+  });
 
   createWindow();
   app.on("activate", () => {

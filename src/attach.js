@@ -4,6 +4,7 @@ const path = require("path");
 const MAX_BYTES = 12 * 1024 * 1024;
 
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"]);
+const AUDIO_EXT = new Set([".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac"]);
 const TEXT_EXT = new Set([
   ".txt",
   ".md",
@@ -22,6 +23,7 @@ function extOf(filePath) {
 function kindOf(filePath) {
   const ext = extOf(filePath);
   if (IMAGE_EXT.has(ext)) return "image";
+  if (AUDIO_EXT.has(ext)) return "audio";
   if (TEXT_EXT.has(ext)) return "text";
   return "file";
 }

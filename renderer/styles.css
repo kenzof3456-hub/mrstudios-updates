@@ -36,9 +36,30 @@ body {
   right: 20px;
   z-index: 2;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 14px;
   pointer-events: none;
+}
+
+.voice-wrap {
+  margin-left: auto;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+#voice-pick {
+  max-width: min(280px, 42vw);
+  background: rgba(8, 16, 28, 0.88);
+  border: 1px solid rgba(78, 203, 255, 0.28);
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 11px;
+  letter-spacing: 0;
 }
 
 .brand {
