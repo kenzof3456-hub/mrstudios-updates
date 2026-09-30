@@ -45,7 +45,11 @@ function speakBrowser(text) {
       resolve(ok);
     };
     const spoken = flatten(text);
-    const timer = setTimeout(() => finish(true), Math.min(12000, 800 + spoken.length * 80));
+    const noVoices = speechSynthesis.getVoices().length === 0;
+    const timer = setTimeout(
+      () => finish(true),
+      noVoices ? 600 : Math.min(12000, 800 + spoken.length * 80)
+    );
     const u = new SpeechSynthesisUtterance(spoken);
     u.lang = "es-MX";
     u.rate = 1.1;
