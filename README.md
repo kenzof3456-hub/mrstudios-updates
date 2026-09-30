@@ -2,7 +2,7 @@
 
 Asistente de escritorio **nativo para Windows** (Electron). No es un sitio web.
 
-Jarvis habla con **Rabbit** (Luis) en español, HUD oscuro estilo J.A.R.V.I.S.
+Jarvis habla con **Rabbit** (Luis). Contesta en el **mismo idioma** que Rabbit (español, inglés, etc.). Tono: cálido, un toque de ingenio, sin carnaval.
 
 ## Qué hace (v1)
 
@@ -18,7 +18,7 @@ Jarvis habla con **Rabbit** (Luis) en español, HUD oscuro estilo J.A.R.V.I.S.
 10. **Mensajes a una persona:** «manda a mamá por WhatsApp que ya voy». Parsea destinatario, texto y app (WhatsApp, Discord, Telegram, SMS, correo). Si no dices app, usa un recuerdo tipo «usa WhatsApp para mamá» o pregunta **una vez** y lo guarda. En Windows abre/enfoca la app (URI `whatsapp://`, `wa.me`, `discord`, `tg://`, `mailto:`, `sms:`), busca el contacto, pega y Enter. Confirma en voz qué se mandó o qué lo bloqueó. Sin destinatario + mensaje claros, no envía. Apodos desde `memory.json`; no inventa números ni correos.
 11. **Adjuntar:** botón visible **Adjuntar** en el compositor (no detrás del orbe). Fotos, capturas y docs se copian a `userData/uploads`. Preview pequeña. El siguiente mensaje (o «mira esto» / enviar vacío) usa el archivo. Imágenes: misma visión/OCR que la pantalla, luego búsqueda si preguntas quién/qué. Solo local, salvo el LLM que configuraste.
 
-Tono: alegre y **expresivo**. UI: esfera azul central (pulso en reposo, anillos al escuchar, ondas al hablar). Chat secundario.
+Tono: cálido, vivo, sin excesos. UI: esfera azul central (pulso en reposo, anillos al escuchar, ondas al hablar). Chat secundario.
 
 ## Micrófono (Windows)
 

@@ -1,6 +1,6 @@
 const { say } = require("./voice");
 
-function formatNow(locale = "es-MX") {
+function formatNow(locale = "es-MX", lang = "es") {
   const now = new Date();
   const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(now);
   const date = new Intl.DateTimeFormat(locale, {
@@ -22,9 +22,11 @@ function formatNow(locale = "es-MX") {
     time,
     timeZone: tz,
     text: say(
-      "¡Tic-tac, Rabbit!",
-      `Son las ${time}.`,
-      `Hoy es ${cap}, ${date} (zona ${tz}).`
+      lang === "en" ? "Clock check." : "La hora.",
+      lang === "en" ? `It's ${time}.` : `Son las ${time}.`,
+      lang === "en"
+        ? `Today is ${cap}, ${date} (${tz}).`
+        : `Hoy es ${cap}, ${date} (zona ${tz}).`
     ),
   };
 }

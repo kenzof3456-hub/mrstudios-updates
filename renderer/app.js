@@ -99,6 +99,20 @@ async function send(text) {
     history.push({ role: "assistant", content: reply });
     if (useAttach) hideAttach();
     if (res.voice) await fillVoices();
+    if (res.language) {
+      const stt = {
+        es: "es-MX",
+        en: "en-GB",
+        pt: "pt-BR",
+        fr: "fr-FR",
+        de: "de-DE",
+        it: "it-IT",
+        ja: "ja-JP",
+        zh: "zh-CN",
+        ko: "ko-KR",
+      };
+      window.__jarvisSttLang = stt[res.language] || "es-MX";
+    }
     await talk(reply);
   } catch (err) {
     const msg = "Fallo de enlace, Rabbit: " + err.message;
@@ -202,6 +216,7 @@ async function boot() {
     const s = await window.jarvis.status();
     if (!s.isWindows) pill.textContent = "DEV";
     window.__jarvisIsWindows = Boolean(s.isWindows);
+    window.__jarvisSttLang = (s.profile && s.profile.locale) || "es-MX";
     if (window.waitVoices) await window.waitVoices();
     await fillVoices();
     addMsg("jarvis", s.greeting);

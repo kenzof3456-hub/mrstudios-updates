@@ -20,7 +20,7 @@ const llm = { apiKey: "", baseUrl: "", model: "" };
     memory,
   });
   assert.strictEqual(a.intent, "remember");
-  assert.match(a.reply, /Apuntado/);
+  assert.match(a.reply, /Anotado|Noted/);
   assert.match(a.reply, /\n/);
 
   const b = await handleTurn({

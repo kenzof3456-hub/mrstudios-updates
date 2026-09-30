@@ -5,6 +5,7 @@ const DEFAULT_PROFILE = {
   realName: "Luis",
   nickname: "Rabbit",
   os: "Windows",
+  language: "es",
   locale: "es-MX",
   voice: {
     engine: "edge",
@@ -42,11 +43,18 @@ function saveProfile(userDataDir, profile) {
   );
 }
 
-function describeProfile(profile) {
+function describeProfile(profile, lang = "es") {
+  if (lang === "en") {
+    return [
+      `You're ${profile.realName}.`,
+      `I call you ${profile.nickname}. Always.`,
+      `System: ${profile.os}.`,
+    ].join("\n");
+  }
   return [
     `Eres ${profile.realName}.`,
     `Te hablo como ${profile.nickname}. Siempre.`,
-    `Sistema: ${profile.os}. ¡Y me encanta tenerte aquí!`,
+    `Sistema: ${profile.os}.`,
   ].join("\n");
 }
 

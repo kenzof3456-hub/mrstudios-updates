@@ -66,13 +66,14 @@ function createSight({ dir, captureFn, llm }) {
     return last;
   }
 
-  async function readFrame(question) {
+  async function readFrame(question, lang) {
     if (!has() || last.kind !== "image") return null;
+    const inLang = lang === "en" ? "English" : lang === "es" ? "Spanish" : "the user's language";
     const prompt = [
-      "Eres Jarvis. Describe la imagen de Rabbit en español, cálido y breve.",
-      "Si hay una persona, di quién parece (nombre si es evidente, si no: descripción).",
-      "Al final, UNA línea exactamente: BUSCAR: <consulta web corta del sujeto principal>.",
-      question ? `Pregunta de Rabbit: ${question}` : "",
+      `You are Jarvis. Describe Rabbit's image in ${inLang}. Warm, brief, not theatrical.`,
+      "If there is a person, say who they appear to be (name if obvious, else a description).",
+      "Final line exactly: BUSCAR: <short web query for the main subject>.",
+      question ? `Rabbit: ${question}` : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -106,20 +107,20 @@ function createSight({ dir, captureFn, llm }) {
     return last;
   }
 
-  async function lookOnly() {
+  async function lookOnly(lang) {
     try {
       await snap();
     } catch {
       return say(
-        "Ay, no pude ver el monitor, Rabbit.",
-        "En Windows: Configuración → Privacidad → Captura de pantalla, y permite a Jarvis.",
-        "Nunca miro si tú no me lo pides."
+        lang === "en"
+          ? "Couldn't see the display. On Windows, allow screen capture for Jarvis."
+          : "No pude ver el monitor. En Windows, permite captura de pantalla a Jarvis."
       );
     }
     return say(
-      "¡Listo, Rabbit!",
-      "Ya tengo tu pantalla. Solo aquí, en el PC. No la subo a ningún lado salvo el modelo que tú configuraste, si preguntas.",
-      "Dime «qué es esto» o «quién es» y me lanzo."
+      lang === "en"
+        ? "Got the screen. Local only. Ask what or who it is."
+        : "Tengo la pantalla. Solo en el PC. Pregunta qué o quién es."
     );
   }
 
@@ -141,69 +142,60 @@ function createSight({ dir, captureFn, llm }) {
       );
     }
 
-    await readFrame(question);
+    await readFrame(question, extras && extras.lang);
     if (!last.description) {
       return say(
-        last.source === "attach"
-          ? "Tengo tu foto guardada en el PC."
-          : "Tengo la foto guardada en tu PC.",
-        "Sin OPENAI_API_KEY (visión) ni OCR (tesseract) no leo quién o qué es.",
-        "Pon la clave o instala tesseract, y repetimos, Rabbit.",
-        "No la subo a ningún otro sitio."
+        extras && extras.lang === "en"
+          ? "I have the image on disk. Vision API or tesseract needed to read it."
+          : "Tengo la imagen en el PC. Falta visión (API) u OCR (tesseract)."
       );
     }
 
-    const q = last.query || question || "qué aparece en la imagen";
+    const q = last.query || question || "what's in the image";
     const results = await searchWeb(q);
-    const web = formatSearchAnswer(q, results);
-    return say(
-      last.source === "attach" ? "¡Ojo al archivo, Rabbit!" : "¡Ojo a la pantalla, Rabbit!",
-      last.description,
-      last.method === "ocr" ? "(Lo leí con OCR local, sin nube.)" : "",
-      web
-    );
+    const web = formatSearchAnswer(q, results, extras && extras.lang);
+    return say(last.description, web);
   }
 
   async function lookAndAnswer(question, extras) {
     return lookImage(question, extras || {});
   }
 
-  async function lookAttached(question) {
+  async function lookAttached(question, lang) {
+    const extras = { recapture: false, lang };
     if (!last || !last.path) {
       return say(
-        "No tengo ningún archivo todavía, Rabbit.",
-        "Pulsa Adjuntar abajo — fotos, capturas o un txt — y luego «mira esto»."
+        lang === "en"
+          ? "No file yet. Use Attach, then ask."
+          : "No hay archivo. Pulsa Adjuntar y pregunta."
       );
     }
     if (last.kind === "image") {
-      return lookImage(question, { recapture: false });
+      return lookImage(question, extras);
     }
     if (last.kind === "text") {
       const snippet = last.text || readTextSnippet(last.path);
       last.text = snippet;
-      const q = String(question || last.name || "documento").slice(0, 120);
+      const q = String(question || last.name || "document").slice(0, 120);
       const results = await searchWeb(q);
-      const web = snippet ? "" : formatSearchAnswer(q, results);
+      const web = snippet ? "" : formatSearchAnswer(q, results, lang);
       return say(
-        `¡Lo tengo, Rabbit! «${last.name}».`,
-        "Quedó solo en tu PC. No lo subo a ningún lado salvo el modelo que configuraste, si hace falta.",
-        snippet
-          ? `Empieza así:\n${snippet.slice(0, 900)}`
-          : "Está vacío o no pude leerlo como texto.",
+        `«${last.name}»`,
+        snippet ? snippet.slice(0, 900) : lang === "en" ? "Couldn't read it as text." : "No pude leerlo como texto.",
         web
       );
     }
     if (last.kind === "audio") {
       return say(
-        "Oigo el archivo, Rabbit, pero no clono voces de personas ni famosos.",
-        "Elige una voz legal en el selector de arriba o dime «habla con voz de Jorge».",
-        "Catálogo: Edge neural, OpenAI y las voces de Windows."
+        lang === "en"
+          ? "I won't clone voices from a sample. Pick a legal voice in the list."
+          : "No clono voces de una muestra. Elige una voz legal en el selector."
       );
     }
     return say(
-      `Guardé «${last.name}» en tu PC.`,
-      "No extraigo Word/PDF/binarios en v1. Si es una foto o un .txt, ahí sí me lanzo.",
-      "No lo subí a ningún otro sitio."
+      lang === "en"
+        ? `Saved «${last.name}» locally. Photos and .txt I can read.`
+        : `Guardé «${last.name}». Fotos y .txt sí los leo.`
     );
   }
 

@@ -3,6 +3,7 @@ const { detectIntent } = require("./intents");
 
 const cases = [
   ["¿Qué hora es?", "datetime"],
+  ["what time is it", "datetime"],
   ["dime la fecha de hoy", "datetime"],
   ["quién soy", "profile"],
   ["abre chrome", "open_app"],

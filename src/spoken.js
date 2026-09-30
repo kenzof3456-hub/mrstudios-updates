@@ -1,22 +1,3 @@
-const GREETINGS = [
-  "¡Rabbit! Aquí estoy. Dime qué hacemos.",
-  "¡Ey, Rabbit! Te escuché. Soy todo oídos.",
-  "¡Presente, Rabbit! ¿A qué le tiramos?",
-  "¡Hola, Rabbit! Encendido y de buen humor.",
-];
-
-const JOKES = [
-  "Rabbit, si yo fuera un café… sería espresso. Corto, intenso, y llegué ya.",
-  "¿Romper Windows? Jamás. Prefiero abrirte las apps, no el sistema.",
-  "Jarvis al habla. No, no traigo traje de metal. Traigo chistes malos y Discord.",
-  "Te escuché decir mi nombre. Eso cuenta como cumplido, Rabbit.",
-];
-
-function pickWakeLine() {
-  const pool = Math.random() < 0.5 ? GREETINGS : JOKES;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
 function forSpeech(text) {
   return String(text || "")
     .replace(/\n+/g, ". ")
@@ -24,4 +5,38 @@ function forSpeech(text) {
     .trim();
 }
 
-module.exports = { pickWakeLine, forSpeech, GREETINGS, JOKES };
+const GREETINGS = {
+  es: [
+    "Aquí estoy, Rabbit.",
+    "Te escuché.",
+    "Dime.",
+  ],
+  en: [
+    "I'm here, Rabbit.",
+    "Heard you.",
+    "Go ahead.",
+  ],
+};
+
+const WITS = {
+  es: [
+    "Jarvis al habla. Sin traje de metal, con café virtual.",
+    "Nombre recibido. ¿Seguimos?",
+  ],
+  en: [
+    "Jarvis here. No metal suit. Still useful.",
+    "Got the name. What's next?",
+  ],
+};
+
+function pickWakeLine(lang) {
+  const code = lang === "es" ? "es" : "en";
+  if (Math.random() < 0.22) {
+    const pool = WITS[code];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  const pool = GREETINGS[code];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+module.exports = { pickWakeLine, forSpeech, GREETINGS, WITS };

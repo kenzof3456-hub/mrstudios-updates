@@ -105,7 +105,7 @@ function detectIntent(raw) {
   }
 
   if (
-    /(que hora|hora actual|hora es|que fecha|fecha de hoy|que dia|dia de la semana|que dia es|dime la hora|hora y fecha)/.test(
+    /(que hora|hora actual|hora es|que fecha|fecha de hoy|que dia|dia de la semana|que dia es|dime la hora|hora y fecha|what time|what(?:'| i)?s the time|what date|what day is it)/.test(
       t
     )
   ) {
@@ -113,7 +113,7 @@ function detectIntent(raw) {
   }
 
   if (
-    /(quien soy|quien es rabbit|mi perfil|como me llamo|quien es luis|datos de usuario)/.test(
+    /(quien soy|quien es rabbit|mi perfil|como me llamo|quien es luis|datos de usuario|who am i|who is rabbit|what(?:'| i)?s my name)/.test(
       t
     )
   ) {

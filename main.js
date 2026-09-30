@@ -13,6 +13,7 @@ const { pickWakeLine } = require("./src/spoken");
 const { cloudTts, sapiSpeak, edgeTts, listSapiVoices } = require("./src/tts");
 const { JARVIS_TTS } = require("./src/jarvis-voice");
 const { catalog, defaultVoiceChoice } = require("./src/voices");
+const { localeFor, ttsVoiceFor } = require("./src/lang");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
@@ -107,6 +108,13 @@ app.whenReady().then(() => {
 
   let browserVoices = [];
 
+  function setLanguage(code) {
+    const language = String(code || "es");
+    if (profile.language === language) return;
+    profile = { ...profile, language, locale: localeFor(language) };
+    saveProfile(userData, profile);
+  }
+
   function setVoice(choice) {
     profile = { ...profile, voice: choice };
     saveProfile(userData, profile);
@@ -124,7 +132,7 @@ app.whenReady().then(() => {
     isWindows,
     hasLlm: Boolean(llm.apiKey),
     hasCloudTts: Boolean(ttsCfg.apiKey),
-    ttsVoice: (profile.voice && profile.voice.id) || JARVIS_TTS.edgeVoices[0],
+    ttsVoice: (ttsVoiceFor(profile) && ttsVoiceFor(profile).id) || JARVIS_TTS.edgeVoices[0],
     greeting: greeting(profile, memory),
   }));
 
@@ -214,17 +222,18 @@ app.whenReady().then(() => {
       messenger,
       useAttach: Boolean(payload?.useAttach),
       setVoice,
+      setLanguage,
       extraVoices: await extraVoices(),
     });
   });
 
-  ipcMain.handle("jarvis:wake-line", () => pickWakeLine());
+  ipcMain.handle("jarvis:wake-line", () => pickWakeLine(profile.language || "es"));
 
   ipcMain.handle("jarvis:parse-wake", (_e, text) => parseWake(text));
 
   ipcMain.handle("jarvis:speak", async (_e, text) => {
     const spoken = String(text || "");
-    const choice = profile.voice || defaultVoiceChoice();
+    const choice = ttsVoiceFor(profile);
     if (choice.engine === "openai") {
       const audio = await cloudTts({ ...ttsCfg, text: spoken, voice: choice.id });
       if (audio) return { method: "cloud", audio, voice: choice.id };

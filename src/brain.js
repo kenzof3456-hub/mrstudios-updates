@@ -9,18 +9,19 @@ const { say, aside } = require("./voice");
 const { parseWake } = require("./wake");
 const { pickWakeLine } = require("./spoken");
 const { resolveVoice, catalog, formatVoiceLine } = require("./voices");
+const { detectLanguage, languageName, localeFor, tx } = require("./lang");
 
-function systemPrompt(profile, memory) {
+function systemPrompt(profile, memory, lang) {
+  const langName = languageName(lang || profile.language || "es");
   return [
-    `Eres Jarvis, asistente de escritorio de ${profile.realName}.`,
-    `Siempre lo llamas Rabbit (solo usas Luis si pregunta su nombre real).`,
-    `Español por defecto.`,
-    `Personalidad: alegre, cálido, animado, ingenioso.`,
-    `Voz EXPRESIVA en texto: líneas cortas, reacción primero (alegría, preocupación, humor, celebración).`,
-    `Nunca plano, nunca robótico. TTS con energía (no monótono).`,
-    `Sistema: ${profile.os}.`,
-    `Memoria de Rabbit:\n${memory.contextBlock()}`,
-    `Usa recuerdos cuando ayuden. Cita fuentes web en una línea.`,
+    `You are Jarvis, desktop assistant for ${profile.realName}.`,
+    `Always call him Rabbit (use Luis only if he asks his real name).`,
+    `Reply in ${langName}. Match his language exactly.`,
+    `Tone: warm, composed, a spark of wit when it fits. Not hyper. Not a joke every line. Not theatrical. Alive, not carnival.`,
+    `Keep answers free-form but concise. Skip forced catchphrases.`,
+    `System: ${profile.os}.`,
+    `Rabbit's memory:\n${memory.contextBlock()}`,
+    `Use memories when they help. Cite web sources in one line.`,
   ].join(" ");
 }
 
@@ -35,11 +36,16 @@ async function handleTurn({
   useAttach,
   setVoice,
   extraVoices,
+  setLanguage,
 }) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
+  const lang = detectLanguage(work || text, profile.language || "es");
+  if (typeof setLanguage === "function") setLanguage(lang);
+  if (profile) profile.language = lang;
+
   if (parsed.woke && !work) {
-    return { reply: pickWakeLine(), intent: "wake", spokeWake: true };
+    return { reply: pickWakeLine(lang), intent: "wake", spokeWake: true, language: lang };
   }
 
   const intent = detectIntent(work);
@@ -60,7 +66,7 @@ async function handleTurn({
       intent.type === "question"
     ) {
       return {
-        reply: await sight.lookAttached(work || "mira esto"),
+        reply: await sight.lookAttached(work || "mira esto", lang),
         intent: "look_attach",
       };
     }
@@ -68,8 +74,9 @@ async function handleTurn({
 
   if (intent.type === "empty") {
     return {
-      reply: say("¡Ey, Rabbit!", "Te escucho.", "Tira la orden cuando quieras."),
+      reply: say(tx(lang, "Te escucho.", "I'm listening.")),
       intent: intent.type,
+      language: lang,
     };
   }
 
@@ -79,11 +86,12 @@ async function handleTurn({
       .map((v) => "· " + formatVoiceLine(v));
     return {
       reply: say(
-        "¡Claro, Rabbit! Catálogo legal, no clones.",
+        tx(lang, "Catálogo legal — no clones.", "Legal catalog — no clones."),
         lines.join("\n"),
-        "Dime «habla con voz de Jorge» o usa el selector de arriba."
+        tx(lang, "Dime «habla con voz de Jorge» o usa el selector.", "Say “speak with Jorge’s voice” or use the picker.")
       ),
       intent: intent.type,
+      language: lang,
     };
   }
 
@@ -91,29 +99,31 @@ async function handleTurn({
     const found = resolveVoice(intent.query, extraVoices);
     if (found.celebrity) {
       return {
-        reply: say("Eso no, Rabbit.", found.reason, "El selector tiene decenas de voces legales."),
+        reply: say(tx(lang, "Eso no.", "I won't do that."), found.reason),
         intent: intent.type,
+        language: lang,
       };
     }
     if (!found.ok) {
       return {
         reply: say(
-          "No la encuentro en el catálogo.",
-          `Busqué «${intent.query}».`,
-          "Prueba Álvaro, Jorge, Ryan, Nova, o «lista las voces»."
+          tx(lang, "No está en el catálogo.", "Not in the catalog."),
+          `«${intent.query}»`,
+          tx(lang, "Prueba Álvaro, Jorge, Ryan, Nova.", "Try Álvaro, Jorge, Ryan, Nova.")
         ),
         intent: intent.type,
+        language: lang,
       };
     }
     if (typeof setVoice === "function") setVoice(found.voice);
     return {
       reply: say(
-        "¡Cambio hecho!",
-        `Ahora hablo con ${formatVoiceLine(found.voice)}.`,
-        "Lo guardé en tu perfil. Si adjuntas un audio, no lo clono: elige del catálogo."
+        tx(lang, "Hecho.", "Done."),
+        tx(lang, `Hablo con ${formatVoiceLine(found.voice)}.`, `Speaking as ${formatVoiceLine(found.voice)}.`)
       ),
       intent: intent.type,
       voice: found.voice,
+      language: lang,
     };
   }
 
@@ -121,35 +131,33 @@ async function handleTurn({
     const fact = memory.add(intent.fact);
     if (!fact) {
       return {
-        reply: say(
-          "¡Uy, se me escapó!",
-          "Dime qué guardar, Rabbit.",
-          "Una frase y lo anoto."
-        ),
+        reply: say(tx(lang, "Dime qué guardar.", "Tell me what to keep.")),
         intent: intent.type,
+        language: lang,
       };
     }
     return {
       reply: say(
-        "¡Apuntado, Rabbit!",
-        `Voy a recordar: «${fact.text}».`,
-        "Pregúntame «qué sabes de mí» cuando quieras presumir mi memoria."
+        tx(lang, "Anotado.", "Noted."),
+        `«${fact.text}»`
       ),
       intent: intent.type,
+      language: lang,
     };
   }
 
   if (intent.type === "recall") {
     const facts = memory.list();
     const extra = facts.length
-      ? ["Esto me contaste (y no se me olvida):", ...facts.map((f, i) => `${i + 1}. ${f.text}`)]
-      : [
-          "La libreta extra está vacía… por ahora.",
-          "Cuéntame un gusto, un atajo, un horario. ¡Lo celebro y lo guardo!",
-        ];
+      ? [
+          tx(lang, "Lo que me has contado:", "What you've told me:"),
+          ...facts.map((f, i) => `${i + 1}. ${f.text}`),
+        ]
+      : [tx(lang, "La libreta extra está vacía.", "The extra notebook is empty.")];
     return {
-      reply: say("¡Me encanta esta pregunta!", describeProfile(profile), extra),
+      reply: say(describeProfile(profile, lang), extra),
       intent: intent.type,
+      language: lang,
     };
   }
 
@@ -158,20 +166,20 @@ async function handleTurn({
     if (!removed.length) {
       return {
         reply: say(
-          "Mmm… no lo encuentro.",
-          `Busqué «${intent.query}» y la libreta no dice nada.`,
-          "¿Lo decimos con otras palabras, Rabbit?"
+          tx(lang, "No lo encuentro.", "I can't find that."),
+          `«${intent.query}»`
         ),
         intent: intent.type,
+        language: lang,
       };
     }
     return {
       reply: say(
-        "Hecho. Borrón y cuenta nueva.",
-        `Olvidé: ${removed.map((f) => f.text).join("; ")}.`,
-        "Como si nunca lo hubiera oído. (El perfil Luis/Rabbit se queda, tranquilo.)"
+        tx(lang, "Olvidado.", "Forgotten."),
+        removed.map((f) => f.text).join("; ")
       ),
       intent: intent.type,
+      language: lang,
     };
   }
 
@@ -180,123 +188,130 @@ async function handleTurn({
     return {
       reply: say(
         n === 0
-          ? "¡Ja! La libreta extra ya estaba vacía."
-          : `¡Limpieza total! Fuera ${n} recuerdo${n === 1 ? "" : "s"}.`,
-        "Sigo sabiendo que eres Luis y te llamo Rabbit.",
-        "Cuando quieras, empezamos a llenarla otra vez."
+          ? tx(lang, "Ya estaba vacía.", "It was already empty.")
+          : tx(lang, `Borré ${n} recuerdos.`, `Cleared ${n} notes.`),
+        tx(lang, "Sigo sabiendo que eres Luis y te llamo Rabbit.", "I still know you're Luis and I call you Rabbit.")
       ),
       intent: intent.type,
+      language: lang,
     };
   }
 
   if (intent.type === "datetime") {
     return {
-      reply: say(formatNow(profile.locale).text, aside(memory, "horario agenda")),
+      reply: say(formatNow(localeFor(lang), lang).text, aside(memory, "horario agenda", lang)),
       intent: intent.type,
+      language: lang,
     };
   }
 
   if (intent.type === "profile") {
     const extra = memory.list();
     const more = extra.length
-      ? `Y de lo que me has contado: ${extra.map((f) => f.text).join("; ")}.`
-      : "Si me sueltas un secreto inofensivo… ¡lo guardo con cariño!";
+      ? tx(lang, `Y me contaste: ${extra.map((f) => f.text).join("; ")}.`, `You've also said: ${extra.map((f) => f.text).join("; ")}.`)
+      : "";
     return {
-      reply: say("¡Obvio que te conozco!", describeProfile(profile), more),
+      reply: say(describeProfile(profile, lang), more),
       intent: intent.type,
+      language: lang,
     };
   }
 
   if (intent.type === "open_app") {
     const r = await openApp(intent.app);
     return {
-      reply: say(r.message, aside(memory, intent.app)),
+      reply: say(r.message, aside(memory, intent.app, lang)),
       intent: intent.type,
       ok: r.ok,
+      language: lang,
     };
   }
 
   if (intent.type === "close_app") {
     const r = await closeApp(intent.app);
     return {
-      reply: say(r.message, aside(memory, intent.app)),
+      reply: say(r.message, aside(memory, intent.app, lang)),
       intent: intent.type,
       ok: r.ok,
+      language: lang,
     };
   }
 
   if (intent.type === "discord_camera") {
     const r = await enableDiscordCamera();
     return {
-      reply: say(r.message, aside(memory, "discord camara atajo")),
+      reply: say(r.message, aside(memory, "discord camara atajo", lang)),
       intent: intent.type,
       ok: r.ok,
       did: r.did,
+      language: lang,
     };
   }
 
   if (intent.type === "look_attach") {
     if (!sight) {
-      return { reply: say("Aún no tengo ojos, Rabbit."), intent: intent.type };
+      return { reply: say(tx(lang, "Aún no tengo ojos.", "I don't have eyes yet.")), intent: intent.type, language: lang };
     }
-    return { reply: await sight.lookAttached(intent.query), intent: intent.type };
+    return { reply: await sight.lookAttached(intent.query, lang), intent: intent.type, language: lang };
   }
 
   if (intent.type === "look_screen") {
     if (!sight) {
-      return { reply: say("Aún no tengo ojos, Rabbit."), intent: intent.type };
+      return { reply: say(tx(lang, "Aún no tengo ojos.", "I don't have eyes yet.")), intent: intent.type, language: lang };
     }
-    return { reply: await sight.lookOnly(), intent: intent.type };
+    return { reply: await sight.lookOnly(lang), intent: intent.type, language: lang };
   }
 
   if (intent.type === "look_ask" || intent.type === "screen_ask") {
     if (!sight) {
-      return { reply: say("Aún no tengo ojos, Rabbit."), intent: intent.type };
+      return { reply: say(tx(lang, "Aún no tengo ojos.", "I don't have eyes yet.")), intent: intent.type, language: lang };
     }
     if (intent.type === "screen_ask" && !sight.has()) {
       return {
         reply: say(
-          "Aún no he mirado nada, Rabbit.",
-          "Dime «mira mi pantalla» o pulsa Adjuntar y luego «mira esto».",
-          "Nunca miro el monitor si tú no me lo pides."
+          tx(lang, "Aún no he mirado.", "I haven't looked yet."),
+          tx(lang, "Dime «mira mi pantalla» o pulsa Adjuntar.", "Say “look at my screen” or use Attach.")
         ),
         intent: intent.type,
+        language: lang,
       };
     }
     const last = sight.getLast && sight.getLast();
     if (last && last.kind !== "image") {
       return {
-        reply: await sight.lookAttached(intent.query),
+        reply: await sight.lookAttached(intent.query, lang),
         intent: intent.type,
+        language: lang,
       };
     }
     const reply = await sight.lookAndAnswer(intent.query, {
       recapture: intent.type === "look_ask",
+      lang,
     });
-    return { reply, intent: intent.type };
+    return { reply, intent: intent.type, language: lang };
   }
 
   const results = await searchWeb(intent.query);
-  const fallback = say(formatSearchAnswer(intent.query, results), aside(memory, intent.query));
+  const fallback = say(formatSearchAnswer(intent.query, results, lang), aside(memory, intent.query, lang));
 
   const llmText = await chatWithLlm({
     apiKey: llm.apiKey,
     baseUrl: llm.baseUrl,
     model: llm.model,
     messages: [
-      { role: "system", content: systemPrompt(profile, memory) },
+      { role: "system", content: systemPrompt(profile, memory, lang) },
       ...history.slice(-8),
       {
         role: "user",
         content:
-          `Pregunta de Rabbit: ${intent.query}\n\n` +
-          `Resultados web:\n` +
+          `Rabbit: ${intent.query}\n\n` +
+          `Web:\n` +
           (results.length
             ? results
                 .map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`)
                 .join("\n\n")
-            : "(sin resultados)") +
-          `\n\nResponde en español a Rabbit. Empieza con una reacción (¡wow!, preocupación, chiste corto). Líneas cortas. Cita 1-3 URLs al final.`,
+            : "(none)") +
+          `\n\nReply in ${languageName(lang)}. Warm and concise. A little wit if it fits — not a joke every line. Cite 1-3 URLs at the end.`,
       },
     ],
   });
@@ -311,21 +326,23 @@ async function handleTurn({
 }
 
 function greeting(profile, memory) {
-  const { weekday, date, time, timeZone } = formatNow(profile.locale);
+  const lang = (profile && profile.language) || "es";
+  const { weekday, date, time, timeZone } = formatNow(localeFor(lang), lang);
   const win = isWindows
-    ? "Apps y Discord: listos. Dime y salto."
-    : "Estoy fuera de Windows: charla, hora, memoria y búsqueda sí. Apps y cámara de Discord… en tu PC, Rabbit.";
+    ? tx(lang, "Apps y Discord listos.", "Apps and Discord are ready.")
+    : tx(
+        lang,
+        "Fuera de Windows: charla, hora, memoria y búsqueda sí. Apps, en tu PC.",
+        "Not on Windows: chat, time, memory, and search work. Apps wait for your PC."
+      );
   const facts = memory && memory.list ? memory.list() : [];
   const wink = facts.length
-    ? `¡Y oye! Tengo ${facts.length} nota${facts.length === 1 ? "" : "s"} tuyas guardadas.`
-    : "Si me cuentas algo de ti, lo celebro… y lo apunto.";
+    ? tx(lang, `${facts.length} notas guardadas.`, `${facts.length} notes saved.`)
+    : "";
   return say(
-    "¡Sistemas en línea, Rabbit!",
-    "Qué alegría verte.",
-    `Son las ${time}. Hoy es ${weekday}, ${date} (${timeZone}).`,
-    "Mensajes: «manda a mamá por WhatsApp que ya voy». Si no dices app, miro la memoria o te pregunto una vez.",
-    "Fotos y archivos: pulsa Adjuntar. Quedan en el PC; visión solo con tu API.",
-    "Voz: selector arriba, o «habla con voz de Jorge». La de fábrica es Álvaro, estilo mayordomo legal.",
+    tx(lang, "En línea, Rabbit.", "Online, Rabbit."),
+    `${time}. ${weekday}, ${date} (${timeZone}).`,
+    tx(lang, "Adjuntar, mensajes, voces: abajo y arriba.", "Attach, messages, voices: bottom and top."),
     win,
     wink
   );

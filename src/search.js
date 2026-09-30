@@ -84,12 +84,12 @@ function searchWeb(query) {
     .catch(() => []);
 }
 
-function formatSearchAnswer(query, results) {
+function formatSearchAnswer(query, results, lang = "es") {
   if (!results.length) {
     return say(
-      "¡Rayos!",
-      `Busqué «${query}» y la red no me dio nada.`,
-      "¿Otras palabras, Rabbit?"
+      lang === "en" ? "Nothing useful came back." : "La red no dio nada útil.",
+      `«${query}»`,
+      lang === "en" ? "Try another wording?" : "¿Otras palabras?"
     );
   }
   const lines = results.slice(0, 3).map((r, i) => `${i + 1}. ${r.snippet || r.title}`);
@@ -98,9 +98,9 @@ function formatSearchAnswer(query, results) {
     .map((r) => r.url)
     .join(" · ");
   return say(
-    "¡Buena pregunta, Rabbit!",
-    `Esto pesqué sobre «${query}»:\n${lines.join("\n")}`,
-    `Fuentes: ${cites}`
+    lang === "en" ? `On «${query}»:` : `Sobre «${query}»:`,
+    lines.join("\n"),
+    lang === "en" ? `Sources: ${cites}` : `Fuentes: ${cites}`
   );
 }
 

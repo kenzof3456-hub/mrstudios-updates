@@ -18,7 +18,7 @@ function createListener({ onFinal, onError }) {
   let ptt = false;
 
   function attach(instance) {
-    instance.lang = "es-MX";
+    instance.lang = window.__jarvisSttLang || "es-MX";
     instance.continuous = !ptt;
     instance.interimResults = true;
     instance.onresult = (event) => {
@@ -50,6 +50,7 @@ function createListener({ onFinal, onError }) {
       rec = new Engine();
       attach(rec);
     }
+    rec.lang = window.__jarvisSttLang || "es-MX";
     rec.continuous = true;
     try {
       rec.start();
