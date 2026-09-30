@@ -155,8 +155,7 @@ async function speakOut(text, onLevel) {
     const ok = await playBase64Mp3(plan.audio, onLevel);
     if (ok) return "cloud";
   }
-  const es = pickSpanishVoice();
-  if (window.__jarvisIsWindows && !es) {
+  if (window.__jarvisIsWindows) {
     const stop = fakeEnvelope(text, onLevel);
     const sapi = await window.jarvis.sapi(text);
     stop();
@@ -164,10 +163,6 @@ async function speakOut(text, onLevel) {
   }
   const local = await speakBrowser(text, onLevel);
   if (local) return "browser";
-  const stop = fakeEnvelope(text, onLevel);
-  const sapi = await window.jarvis.sapi(text);
-  stop();
-  if (sapi && sapi.ok) return "sapi";
   return "none";
 }
 

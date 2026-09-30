@@ -61,7 +61,16 @@ function sapiSpeak(text) {
 Add-Type -AssemblyName System.Speech
 $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
 $s.Rate = 2
-try { $s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::NotSpecified, [System.Speech.Synthesis.VoiceAge]::Adult, 0, [Globalization.CultureInfo]::GetCultureInfo('es-MX')) } catch {}
+$picked = $false
+foreach ($name in @('es-MX','es-ES','es')) {
+  try {
+    $v = $s.GetInstalledVoices() | ForEach-Object { $_.VoiceInfo } | Where-Object { $_.Culture.Name -like "$name*" } | Select-Object -First 1
+    if ($v) { $s.SelectVoice($v.Name); $picked = $true; break }
+  } catch {}
+}
+if (-not $picked) {
+  try { $s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::NotSpecified, [System.Speech.Synthesis.VoiceAge]::Adult, 0, [Globalization.CultureInfo]::GetCultureInfo('es-MX')) } catch {}
+}
 $s.Speak('${spoken.slice(0, 1500)}')
 `;
   return new Promise((resolve) => {
