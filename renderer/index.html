@@ -10,48 +10,45 @@
     <title>J.A.R.V.I.S.</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <div class="hud">
-      <header class="top">
-        <div class="mark">
-          <div class="ring"></div>
-          <div>
-            <h1>J.A.R.V.I.S.</h1>
-            <p class="sub">Just A Rather Very Intelligent System</p>
-          </div>
-        </div>
-        <div class="meta">
-          <span id="status-pill" class="pill">SISTEMA EN LÍNEA</span>
-          <span id="ear" class="pill dim">OÍDO: OFF</span>
-          <span class="pill dim">USUARIO: RABBIT</span>
-          <span class="pill dim">HOST: WINDOWS</span>
-        </div>
-      </header>
+  <body data-mode="idle">
+    <canvas id="orb" aria-hidden="true"></canvas>
 
-      <main id="log" class="log" aria-live="polite"></main>
+    <header class="chrome">
+      <span class="brand">J.A.R.V.I.S.</span>
+      <span id="status-pill" class="ghost">EN LÍNEA</span>
+      <span id="ear" class="ghost">OÍDO OFF</span>
+    </header>
 
-      <footer class="dock">
+    <p id="caption" class="caption"></p>
+
+    <aside id="log" class="log" aria-live="polite"></aside>
+
+    <footer class="bar">
+      <button type="button" id="mic-always" class="ghost-btn">Oído</button>
+      <button type="button" id="mic-ptt" class="ghost-btn">PTT</button>
+      <form id="form" class="composer">
+        <input
+          id="input"
+          type="text"
+          autocomplete="off"
+          placeholder="«Jarvis» o escribe…"
+        />
+        <button type="submit" id="send">→</button>
+      </form>
+      <details class="more">
+        <summary>más</summary>
         <div class="chips">
-          <button type="button" id="mic-always">Oído siempre</button>
-          <button type="button" id="mic-ptt">PTT (mantener)</button>
           <button type="button" data-q="recuerda que uso Discord por las tardes">Recuerda</button>
           <button type="button" data-q="¿Qué hora es?">Hora</button>
           <button type="button" data-q="¿Quién soy?">Perfil</button>
           <button type="button" data-q="¿Qué sabes de mí?">Memoria</button>
-          <button type="button" data-q="Abre el Bloc de notas">Abrir Notepad</button>
-          <button type="button" data-q="Enciende la cámara de Discord">Cámara Discord</button>
+          <button type="button" data-q="Abre el Bloc de notas">Notepad</button>
+          <button type="button" data-q="Enciende la cámara de Discord">Discord</button>
         </div>
-        <form id="form" class="composer">
-          <textarea
-            id="input"
-            rows="2"
-            placeholder="Habla «Jarvis» o escribe, Rabbit…"
-            autofocus
-          ></textarea>
-          <button type="submit" id="send">Enviar</button>
-        </form>
-      </footer>
-    </div>
+      </details>
+    </footer>
+
+    <script src="orb.js"></script>
     <script src="speak.js"></script>
     <script src="listen.js"></script>
     <script src="app.js"></script>

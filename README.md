@@ -15,7 +15,7 @@ Jarvis habla con **Rabbit** (Luis) en español, HUD oscuro estilo J.A.R.V.I.S.
 7. Hora, día de la semana y fecha en español, zona horaria local de Windows.
 8. **Voz:** oído siempre (o PTT). Palabra de activación **«Jarvis»** → responde en voz alta al momento (saludo o chiste). Luego ejecuta la orden hablada. TTS expresivo: OpenAI si hay clave, si no **voces de Chromium / SAPI de Windows**.
 
-Tono: alegre y **expresivo** (líneas cortas, reacción, emoción clara). Español. Siempre **Rabbit**. TTS con ritmo un poco más vivo (`rate`/`pitch`); SAPI sube `Rate`.
+Tono: alegre y **expresivo**. UI: esfera azul central (pulso en reposo, anillos al escuchar, ondas al hablar). Chat secundario.
 
 ## Micrófono (Windows)
 

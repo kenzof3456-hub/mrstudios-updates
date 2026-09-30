@@ -6,12 +6,24 @@ const pill = document.getElementById("status-pill");
 const ear = document.getElementById("ear");
 const alwaysBtn = document.getElementById("mic-always");
 const pttBtn = document.getElementById("mic-ptt");
+const caption = document.getElementById("caption");
 
 const history = [];
 let speaking = false;
 let awaitCommand = false;
 let voiceMode = "off";
 let listener = null;
+
+function mode() {
+  if (speaking) return "speak";
+  if (awaitCommand || voiceMode === "ptt") return "listen";
+  return "idle";
+}
+
+function applyOrb() {
+  if (window.orbSetState) window.orbSetState(mode());
+  if (mode() !== "speak" && window.orbSetLevel) window.orbSetLevel(0);
+}
 
 function addMsg(role, text) {
   const el = document.createElement("div");
@@ -22,21 +34,25 @@ function addMsg(role, text) {
   el.appendChild(who);
   el.appendChild(document.createTextNode(text));
   logEl.appendChild(el);
+  while (logEl.children.length > 8) logEl.removeChild(logEl.firstChild);
   logEl.scrollTop = logEl.scrollHeight;
+  if (role === "jarvis" && caption) caption.textContent = text.split("\n")[0];
 }
 
 async function talk(text) {
   speaking = true;
+  applyOrb();
   try {
     if (listener && voiceMode === "always") listener.stop();
-    await window.speakOut(text);
+    await window.speakOut(text, (lvl) => window.orbSetLevel && window.orbSetLevel(lvl));
   } finally {
     speaking = false;
     if (voiceMode === "always" && listener) listener.startAlways();
+    applyOrb();
   }
 }
 
-async function send(text, { fromVoice = false } = {}) {
+async function send(text) {
   const trimmed = text.trim();
   if (!trimmed) return;
   addMsg("user", trimmed);
@@ -68,23 +84,26 @@ async function onHeard(finalText) {
     await talk(line);
     if (parsed.rest) {
       awaitCommand = false;
-      await send(parsed.rest, { fromVoice: true });
+      applyOrb();
+      await send(parsed.rest);
     } else {
       awaitCommand = true;
-      ear.textContent = "OÍDO: ORDEN…";
+      ear.textContent = "ESCUCHANDO";
+      applyOrb();
     }
     return;
   }
   if (awaitCommand || voiceMode === "ptt") {
     awaitCommand = false;
-    await send(finalText, { fromVoice: true });
+    applyOrb();
+    await send(finalText);
   }
 }
 
 window.__jarvisHeard = onHeard;
 
 function onListenError(err) {
-  if (ear) ear.textContent = "MIC: " + err;
+  if (ear) ear.textContent = "MIC " + err;
 }
 
 async function armMic() {
@@ -95,27 +114,27 @@ async function armMic() {
   } catch (err) {
     addMsg(
       "jarvis",
-      "¡Ojo, Rabbit! No hay micrófono. En Windows: Configuración → Privacidad → Micrófono → permitir apps de escritorio, y acepta el aviso de Electron."
+      "¡Ojo, Rabbit! No hay micrófono. En Windows: Privacidad → Micrófono → apps de escritorio."
     );
     return false;
   }
 }
 
 async function boot() {
+  applyOrb();
   try {
     const s = await window.jarvis.status();
-    if (!s.isWindows) pill.textContent = "MODO DEV · NO WINDOWS";
+    if (!s.isWindows) pill.textContent = "DEV";
     window.__jarvisIsWindows = Boolean(s.isWindows);
-    if (!s.hasLlm) pill.title = "Sin OPENAI_API_KEY: TTS local (SAPI / voces del sistema) y búsqueda siguen.";
     addMsg("jarvis", s.greeting);
     if (window.waitVoices) await window.waitVoices();
     await talk(s.greeting);
   } catch (err) {
-    addMsg("jarvis", "Rabbit, no pude iniciar el núcleo: " + err.message);
+    addMsg("jarvis", "No pude iniciar el núcleo: " + err.message);
   }
 
   if (!window.speechSupported || !window.speechSupported()) {
-    ear.textContent = "STT NO DISPONIBLE";
+    ear.textContent = "SIN STT";
     alwaysBtn.disabled = true;
     pttBtn.disabled = true;
     return;
@@ -132,13 +151,6 @@ form.addEventListener("submit", (e) => {
   send(input.value);
 });
 
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    send(input.value);
-  }
-});
-
 for (const btn of document.querySelectorAll(".chips button[data-q]")) {
   btn.addEventListener("click", () => send(btn.dataset.q));
 }
@@ -148,6 +160,7 @@ alwaysBtn.addEventListener("click", async () => {
     voiceMode = "off";
     listener && listener.stop();
     alwaysBtn.classList.remove("on");
+    applyOrb();
     return;
   }
   if (!(await armMic())) return;
@@ -161,12 +174,21 @@ pttBtn.addEventListener("mousedown", async (e) => {
   if (!(await armMic())) return;
   voiceMode = "ptt";
   listener.startPtt();
+  applyOrb();
 });
 pttBtn.addEventListener("mouseup", () => {
-  if (voiceMode === "ptt") listener.endPtt();
+  if (voiceMode === "ptt") {
+    listener.endPtt();
+    voiceMode = "off";
+    applyOrb();
+  }
 });
 pttBtn.addEventListener("mouseleave", () => {
-  if (voiceMode === "ptt") listener.endPtt();
+  if (voiceMode === "ptt") {
+    listener.endPtt();
+    voiceMode = "off";
+    applyOrb();
+  }
 });
 
 boot();
