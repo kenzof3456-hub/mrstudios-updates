@@ -7,20 +7,21 @@
   let t0 = performance.now();
   let dpr = 1;
 
-  const meridians = 18;
-  const parallels = 11;
-  const ringCount = 6;
-  const sparkN = 220;
+  const meridians = 26;
+  const parallels = 14;
+  const ringCount = 9;
+  const sparkN = 420;
   const sparks = [];
 
   for (let i = 0; i < sparkN; i++) {
     sparks.push({
       theta: Math.random() * Math.PI * 2,
       phi: Math.acos(2 * Math.random() - 1),
-      speed: 0.18 + Math.random() * 0.55,
-      orbit: 0.82 + Math.random() * 0.38,
+      speed: 0.22 + Math.random() * 0.85,
+      orbit: 0.55 + Math.random() * 0.62,
       trail: Math.random() * Math.PI * 2,
-      size: 0.6 + Math.random() * 1.8,
+      size: 0.5 + Math.random() * 2.2,
+      band: Math.random() < 0.35,
     });
   }
 
@@ -138,7 +139,7 @@
 
     const yaw = t * rotSpeed;
     const pitch = Math.sin(t * 0.17) * 0.18;
-    const baseR = Math.min(w, h) * 0.34;
+    const baseR = Math.min(w, h) * 0.38;
     const scale = baseR * 1.85;
 
     function xf(p) {
@@ -193,8 +194,8 @@
       }
       drawPolyline(
         pts,
-        `rgba(90, 200, 255, ${0.16 + 0.22 * (state === "speak" ? level : 0.35)})`,
-        0.7
+        `rgba(100, 210, 255, ${0.22 + 0.28 * (state === "speak" ? level : 0.45)})`,
+        0.85
       );
     }
 
@@ -214,7 +215,7 @@
       const spin = t * ring.speed * (state === "listen" ? 1.8 : 1) + ring.az;
       const pts = [];
       const n = 96;
-      const rad = ringTight * (0.92 + (r % 3) * 0.06);
+      const rad = ringTight * (0.78 + (r % 4) * 0.08);
       for (let i = 0; i <= n; i++) {
         const a = (i / n) * Math.PI * 2;
         let p = { x: Math.cos(a) * rad, y: Math.sin(a) * rad * 0.18, z: Math.sin(a) * rad };
@@ -222,27 +223,30 @@
         p = rotY(p, ring.ay + spin);
         pts.push(xf(p));
       }
-      const alpha = 0.28 + (r % 2) * 0.12 + (state === "listen" ? 0.18 : 0);
-      drawPolyline(pts, `rgba(120, 220, 255, ${alpha})`, 1.15 + (r === 0 ? 0.6 : 0));
-      drawPolyline(pts, `rgba(200, 245, 255, ${alpha * 0.35})`, 0.45);
+      const alpha = 0.38 + (r % 2) * 0.16 + (state === "listen" ? 0.2 : 0);
+      drawPolyline(pts, `rgba(90, 210, 255, ${alpha})`, 1.35 + (r === 0 ? 0.8 : 0));
+      drawPolyline(pts, `rgba(210, 248, 255, ${alpha * 0.42})`, 0.5);
     }
 
     for (const s of sparks) {
-      s.theta += s.speed * 0.012 * (state === "idle" ? 0.7 : 1.4);
-      s.trail += 0.04;
+      s.theta += s.speed * 0.016 * (state === "idle" ? 0.85 : 1.6);
+      if (s.band) s.phi = Math.PI / 2 + Math.sin(t * 0.6 + s.trail) * 0.18;
+      s.trail += 0.05;
       const show = Math.sin(s.trail + t) * 0.5 + 0.5;
-      if (show < 1 - sparkAmt && state === "idle") continue;
+      if (state === "idle" && show < 0.28 && !s.band) continue;
       const p = xf(sph(s.theta, s.phi, s.orbit * ringTight));
-      const glow = (0.35 + show * 0.65) * p.a * sparkAmt;
-      ctx.fillStyle = `rgba(170, 235, 255, ${Math.min(0.95, glow)})`;
+      const glow = (0.4 + show * 0.7) * p.a * Math.min(1, sparkAmt + 0.25);
+      ctx.fillStyle = `rgba(180, 240, 255, ${Math.min(0.98, glow)})`;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, s.size * (0.7 + show), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, s.size * (0.75 + show), 0, Math.PI * 2);
       ctx.fill();
-      const back = xf(sph(s.theta - 0.18, s.phi, s.orbit * ringTight));
-      ctx.strokeStyle = `rgba(80, 190, 255, ${glow * 0.45})`;
-      ctx.lineWidth = s.size * 0.7;
+      const back = xf(sph(s.theta - 0.32, s.phi, s.orbit * ringTight));
+      const mid = xf(sph(s.theta - 0.16, s.phi, s.orbit * ringTight));
+      ctx.strokeStyle = `rgba(70, 190, 255, ${glow * 0.55})`;
+      ctx.lineWidth = s.size * 0.85;
       ctx.beginPath();
       ctx.moveTo(back.x, back.y);
+      ctx.lineTo(mid.x, mid.y);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
     }
