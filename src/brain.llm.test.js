@@ -58,6 +58,25 @@ assert.match(systemPrompt(profile, memory, "es"), /Think, then act/);
   });
   assert.strictEqual(hi.reply, "Hola, Señor.");
 
+  const talker = {
+    apiKey: "test",
+    chat: async ({ json }) => {
+      if (json) return JSON.stringify({ action: "profile", query: "", need_web: false });
+      return "Eres Luis. Te llamo Señor, y no recito un parte de sistema.";
+    },
+  };
+  const who = await handleTurn({
+    text: "quién soy",
+    history: [],
+    profile,
+    llm: talker,
+    memory,
+    craftDir,
+  });
+  assert.strictEqual(who.intent, "profile");
+  assert.match(who.reply, /Señor/);
+  assert.doesNotMatch(who.reply, /Adjuntar|UTC/);
+
   console.log("brain llm ok");
 })().catch((e) => {
   console.error(e);

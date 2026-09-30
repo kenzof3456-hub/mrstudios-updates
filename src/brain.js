@@ -44,6 +44,7 @@ function systemPrompt(profile, memory, lang) {
     `When he asks to make code, mods, or 3D, write files to disk (original work only). When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
     `Use his memory when it helps. Cite 1–3 URLs for web facts. Legal TV only — no pirate streams. Refuse OS wipes. Ask once before deleting files or installing unknowns.`,
     `${who}'s memory:\n${memory.contextBlock()}`,
+    `Clock (for you, not a status dump): ${formatNow(localeFor(lang), lang).text}.`,
   ].join(" ");
 }
 
@@ -61,10 +62,21 @@ function think(llm, opts) {
   });
 }
 
-const PLAN_HINTS = new Set(["question", "craft", "tv", "do_last"]);
+const PLAN_LOCKED = new Set([
+  "hello",
+  "empty",
+  "agency_refuse",
+  "agency_ask",
+  "agency_cancel",
+  "delete_file",
+  "list_voices",
+  "set_voice",
+  "forget",
+  "forget_all",
+]);
 
 async function maybePlan(llm, intent, work, ctx) {
-  if (!hasThinker(llm) || !PLAN_HINTS.has(intent.type)) return intent;
+  if (!hasThinker(llm) || PLAN_LOCKED.has(intent.type)) return intent;
   const raw = await think(llm, {
     timeout: 12000,
     json: true,
@@ -86,6 +98,22 @@ async function maybePlan(llm, intent, work, ctx) {
   const plan = parsePlan(raw);
   if (!plan) return intent;
   return intentFromPlan(plan, intent.query || work);
+}
+
+async function speakThought(llm, profile, memory, lang, brief, facts) {
+  if (!hasThinker(llm)) return null;
+  const text = await think(llm, {
+    timeout: 20000,
+    messages: [
+      { role: "system", content: systemPrompt(profile, memory, lang) },
+      {
+        role: "user",
+        content:
+          `${brief}\n\nFacts (answer naturally to ${address(profile)}; do not dump a status list):\n${facts}`,
+      },
+    ],
+  });
+  return text && String(text).trim();
 }
 
 async function handleTurn({
@@ -286,11 +314,17 @@ async function handleTurn({
         language: lang,
       };
     }
+    const canned = say(tx(lang, "Anotado.", "Noted."), `«${fact.text}»`);
+    const llmText = await speakThought(
+      llm,
+      profile,
+      memory,
+      lang,
+      tx(lang, "Acaba de pedirte que lo recuerdes.", "He just asked you to remember this."),
+      fact.text
+    );
     return {
-      reply: say(
-        tx(lang, "Anotado.", "Noted."),
-        `«${fact.text}»`
-      ),
+      reply: llmText || canned,
       intent: intent.type,
       language: lang,
     };
@@ -304,8 +338,17 @@ async function handleTurn({
           ...facts.map((f, i) => `${i + 1}. ${f.text}`),
         ]
       : [tx(lang, "La libreta extra está vacía.", "The extra notebook is empty.")];
+    const canned = say(describeProfile(profile, lang), extra);
+    const llmText = await speakThought(
+      llm,
+      profile,
+      memory,
+      lang,
+      tx(lang, "Preguntó qué recuerdas de él.", "He asked what you remember about him."),
+      canned
+    );
     return {
-      reply: say(describeProfile(profile, lang), extra),
+      reply: llmText || canned,
       intent: intent.type,
       language: lang,
     };
@@ -348,8 +391,18 @@ async function handleTurn({
   }
 
   if (intent.type === "datetime") {
+    const now = formatNow(localeFor(lang), lang);
+    const canned = say(now.text, aside(memory, "horario agenda", lang));
+    const llmText = await speakThought(
+      llm,
+      profile,
+      memory,
+      lang,
+      tx(lang, "Preguntó la hora o la fecha.", "He asked the time or date."),
+      canned
+    );
     return {
-      reply: say(formatNow(localeFor(lang), lang).text, aside(memory, "horario agenda", lang)),
+      reply: llmText || canned,
       intent: intent.type,
       language: lang,
     };
@@ -360,8 +413,17 @@ async function handleTurn({
     const more = extra.length
       ? tx(lang, `Y me contaste: ${extra.map((f) => f.text).join("; ")}.`, `You've also said: ${extra.map((f) => f.text).join("; ")}.`)
       : "";
+    const canned = say(describeProfile(profile, lang), more);
+    const llmText = await speakThought(
+      llm,
+      profile,
+      memory,
+      lang,
+      tx(lang, "Preguntó quién es.", "He asked who he is."),
+      canned
+    );
     return {
-      reply: say(describeProfile(profile, lang), more),
+      reply: llmText || canned,
       intent: intent.type,
       language: lang,
     };

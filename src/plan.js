@@ -68,8 +68,8 @@ function plannerPrompt(who, langName) {
   return [
     `You are Jarvis planning one desktop turn for ${who}.`,
     `Reply JSON only: {"action":"answer|search|craft|tv|open_app|close_app|execute|remember|datetime|look_screen|refuse|voice|profile","query":"","app":"","need_web":true}`,
-    `Language of Señor: ${langName}. Think, then pick one action.`,
-    "craft = write original code/3D to disk. execute = run last safe job (házmelo). tv = legal listings. search/answer = explain using web. refuse = OS wipe or piracy.",
+    `Language of ${who}: ${langName}. Think, then pick one action that uses tools or memory if needed.`,
+    "craft = write original code/3D to disk. execute = run last safe job (házmelo). tv = legal listings. search/answer = explain using web. remember/profile/datetime = use memory and the clock. open_app/close_app = Windows. look_screen = only if he asked to look. refuse = OS wipe or piracy.",
     "Never pirate. Never dump a status paragraph. Address him only as instructed.",
   ].join(" ");
 }
