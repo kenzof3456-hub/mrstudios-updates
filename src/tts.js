@@ -1,19 +1,23 @@
 const https = require("https");
 const { URL } = require("url");
 const { execFile } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { forSpeech } = require("./spoken");
+const { JARVIS_TTS } = require("./jarvis-voice");
 
-function cloudTts({ apiKey, baseUrl, text, voice, model }) {
+function cloudTts({ apiKey, baseUrl, text, voice, model, speed }) {
   if (!apiKey) return Promise.resolve(null);
   const spoken = forSpeech(text);
   if (!spoken) return Promise.resolve(null);
   const root = (baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
   const url = new URL(`${root}/audio/speech`);
   const body = JSON.stringify({
-    model: model || "tts-1",
-    voice: voice || "nova",
+    model: model || JARVIS_TTS.openaiModel,
+    voice: voice || JARVIS_TTS.openaiVoice,
     input: spoken.slice(0, 4000),
-    speed: 1.05,
+    speed: speed || JARVIS_TTS.openaiSpeed,
   });
 
   return new Promise((resolve) => {
@@ -51,6 +55,46 @@ function cloudTts({ apiKey, baseUrl, text, voice, model }) {
   });
 }
 
+async function tryEdgeVoice(spoken, voice) {
+  const { EdgeTTS } = require("node-edge-tts");
+  const out = path.join(
+    os.tmpdir(),
+    `jarvis-tts-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`
+  );
+  try {
+    const tts = new EdgeTTS({
+      voice,
+      lang: /^es-/i.test(voice) ? "es-ES" : "en-GB",
+      rate: JARVIS_TTS.edgeRate,
+      pitch: JARVIS_TTS.edgePitch,
+      timeout: 18000,
+      outputFormat: "audio-24khz-48kbitrate-mono-mp3",
+    });
+    await tts.ttsPromise(spoken, out);
+    if (!fs.existsSync(out) || fs.statSync(out).size < 200) return null;
+    return fs.readFileSync(out).toString("base64");
+  } catch {
+    return null;
+  } finally {
+    try {
+      fs.unlinkSync(out);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+async function edgeTts(text) {
+  const spoken = forSpeech(text);
+  if (!spoken) return null;
+  const voices = JARVIS_TTS.edgeVoices;
+  for (const voice of voices) {
+    const audio = await tryEdgeVoice(spoken.slice(0, 4000), voice);
+    if (audio) return { audio, voice };
+  }
+  return null;
+}
+
 function sapiSpeak(text) {
   if (process.platform !== "win32") {
     return Promise.resolve({ ok: false, reason: "not-windows" });
@@ -60,16 +104,19 @@ function sapiSpeak(text) {
   const script = `
 Add-Type -AssemblyName System.Speech
 $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
-$s.Rate = 2
+$s.Rate = -1
 $picked = $false
-foreach ($name in @('es-MX','es-ES','es')) {
-  try {
-    $v = $s.GetInstalledVoices() | ForEach-Object { $_.VoiceInfo } | Where-Object { $_.Culture.Name -like "$name*" } | Select-Object -First 1
-    if ($v) { $s.SelectVoice($v.Name); $picked = $true; break }
-  } catch {}
+$prefer = @('George','Ryan','Ollie','Daniel','Alvaro','Jorge','Pablo','Diego')
+$all = $s.GetInstalledVoices() | ForEach-Object { $_.VoiceInfo }
+foreach ($want in $prefer) {
+  $v = $all | Where-Object { $_.Name -match $want } | Select-Object -First 1
+  if ($v) { try { $s.SelectVoice($v.Name); $picked = $true; break } catch {} }
 }
 if (-not $picked) {
-  try { $s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::NotSpecified, [System.Speech.Synthesis.VoiceAge]::Adult, 0, [Globalization.CultureInfo]::GetCultureInfo('es-MX')) } catch {}
+  try { $s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Male, [System.Speech.Synthesis.VoiceAge]::Adult, 0, [Globalization.CultureInfo]::GetCultureInfo('en-GB')) ; $picked = $true } catch {}
+}
+if (-not $picked) {
+  try { $s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Male, [System.Speech.Synthesis.VoiceAge]::Adult, 0, [Globalization.CultureInfo]::GetCultureInfo('es-ES')) } catch {}
 }
 $s.Speak('${spoken.slice(0, 1500)}')
 `;
@@ -83,4 +130,4 @@ $s.Speak('${spoken.slice(0, 1500)}')
   });
 }
 
-module.exports = { cloudTts, sapiSpeak };
+module.exports = { cloudTts, edgeTts, sapiSpeak };

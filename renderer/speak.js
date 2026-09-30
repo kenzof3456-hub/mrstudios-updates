@@ -5,14 +5,28 @@ function flatten(text) {
     .trim();
 }
 
-function pickSpanishVoice() {
+const SKIP = /helena|sabina|elvira|monica|laura|pilar|paulina|zira|hazel|susan|nova|shimmer/i;
+const PREFER = /ollie|george|ryan|daniel|alvaro|jorge|pablo|diego|united kingdom|en-gb/i;
+
+function pickJarvisVoice() {
   const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-  return (
-    voices.find((v) => /^es(-|_)MX/i.test(v.lang)) ||
-    voices.find((v) => /^es/i.test(v.lang)) ||
-    voices.find((v) => /helena|sabina|pablo|spanish|español/i.test(v.name)) ||
-    null
-  );
+  let best = null;
+  let bestScore = -1;
+  for (const v of voices) {
+    if (SKIP.test(v.name || "")) continue;
+    const blob = `${v.name || ""} ${v.lang || ""}`;
+    let score = 0;
+    if (/^en(-|_)GB/i.test(v.lang)) score += 6;
+    if (/^es(-|_)ES/i.test(v.lang)) score += 5;
+    if (/^es/i.test(v.lang)) score += 3;
+    if (PREFER.test(blob)) score += 10;
+    if (/male/i.test(v.name)) score += 2;
+    if (score > bestScore) {
+      bestScore = score;
+      best = v;
+    }
+  }
+  return best || voices.find((v) => /^es/i.test(v.lang)) || null;
 }
 
 function waitVoices() {
@@ -103,11 +117,11 @@ function speakBrowser(text, onLevel) {
       noVoices ? 600 : Math.min(12000, 800 + spoken.length * 80)
     );
     const u = new SpeechSynthesisUtterance(spoken);
-    u.lang = "es-MX";
-    u.rate = 1.1;
-    u.pitch = 1.15;
+    u.lang = "es-ES";
+    u.rate = 0.96;
+    u.pitch = 0.9;
     u.volume = 1;
-    const voice = pickSpanishVoice();
+    const voice = pickJarvisVoice();
     if (voice) u.voice = voice;
     u.onend = () => finish(true);
     u.onerror = () => finish(false);
@@ -151,9 +165,9 @@ function playBase64Mp3(b64, onLevel) {
 async function speakOut(text, onLevel) {
   await waitVoices();
   const plan = await window.jarvis.speakPlan(text);
-  if (plan.method === "cloud" && plan.audio) {
+  if ((plan.method === "cloud" || plan.method === "edge") && plan.audio) {
     const ok = await playBase64Mp3(plan.audio, onLevel);
-    if (ok) return "cloud";
+    if (ok) return plan.method;
   }
   if (window.__jarvisIsWindows) {
     const stop = fakeEnvelope(text, onLevel);

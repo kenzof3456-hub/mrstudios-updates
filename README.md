@@ -13,7 +13,7 @@ Jarvis habla con **Rabbit** (Luis) en español, HUD oscuro estilo J.A.R.V.I.S.
 5. Cámara de Discord (mejor esfuerzo): abre Discord si hace falta, enfoca la ventana y envía **Ctrl+Shift+V** (Toggle Camera).
 6. Preguntas generales: busca en la web y responde en español, con fuentes cortas.
 7. Hora, día de la semana y fecha en español, zona horaria local de Windows.
-8. **Voz:** oído siempre (o PTT). Palabra de activación **«Jarvis»** → responde en voz alta al momento (saludo o chiste). Luego ejecuta la orden hablada. TTS expresivo: OpenAI si hay clave, si no **voces de Chromium / SAPI de Windows**.
+8. **Voz:** oído siempre (o PTT). Palabra de activación **«Jarvis»** → responde en voz alta al momento (saludo o chiste). Luego ejecuta la orden hablada. TTS por defecto: **Microsoft Edge neural `es-ES-AlvaroNeural`** (varón castellano sobrio; análogo español del mayordomo británico). Reserva: `en-GB-RyanNeural`, OpenAI **`fable`**, SAPI masculino, Chromium.
 9. **Pantalla (solo si lo pides):** «mira mi pantalla» captura el monitor principal y la guarda en `userData/last-screen.png`. Nunca en segundo plano. «qué es esto» / «quién es»: visión (si hay API) u OCR local (`tesseract`), luego búsqueda web. La imagen solo se envía al LLM que configuraste.
 10. **Mensajes a una persona:** «manda a mamá por WhatsApp que ya voy». Parsea destinatario, texto y app (WhatsApp, Discord, Telegram, SMS, correo). Si no dices app, usa un recuerdo tipo «usa WhatsApp para mamá» o pregunta **una vez** y lo guarda. En Windows abre/enfoca la app (URI `whatsapp://`, `wa.me`, `discord`, `tg://`, `mailto:`, `sms:`), busca el contacto, pega y Enter. Confirma en voz qué se mandó o qué lo bloqueó. Sin destinatario + mensaje claros, no envía. Apodos desde `memory.json`; no inventa números ni correos.
 11. **Adjuntar:** botón visible **Adjuntar** en el compositor (no detrás del orbe). Fotos, capturas y docs se copian a `userData/uploads`. Preview pequeña. El siguiente mensaje (o «mira esto» / enviar vacío) usa el archivo. Imágenes: misma visión/OCR que la pantalla, luego búsqueda si preguntas quién/qué. Solo local, salvo el LLM que configuraste.
@@ -26,7 +26,14 @@ Tono: alegre y **expresivo**. UI: esfera azul central (pulso en reposo, anillos 
 2. Al pulsar **Oído siempre** o **PTT**, Electron pide el mic. Acepta.
 3. STT v1: **Web Speech API** de Chromium (`es-MX`). En algunas builds necesita red. Alternativa PTT si el oído continuo se corta.
 4. Di **«Jarvis»** (o «oye Jarvis…»). Contesta en voz alta. Sigue con la orden: «Jarvis, qué hora es».
-5. TTS: con `OPENAI_API_KEY` usa `/audio/speech` (voz `nova`). Sin clave: `speechSynthesis` (voces en español del sistema) y, en Windows, **System.Speech** (SAPI).
+5. TTS por defecto (estilo J.A.R.V.I.S. legal, sin clonar al actor):
+   - **`es-ES-AlvaroNeural`** (Microsoft Edge neural, varón castellano calmado — el texto sigue en español).
+   - Si falla: **`en-GB-RyanNeural`** (varón británico en el mismo servicio Edge).
+   - Con `OPENAI_API_KEY`: **`fable`** (varón británico OpenAI).
+   - Windows SAPI: George / Jorge / Pablo / Álvaro (masculino).
+   - Chromium `speechSynthesis` con la voz masculina más cercana.
+
+Referencia de personaje (metadatos públicos, no el archivo de audio): el clip [Audio de Jarvis (despertador de cada mañana) parte 3](https://www.youtube.com/watch?v=uneoc9zZan0) de THExMISIOxYT es una alarma fan en español al estilo de J.A.R.V.I.S. de Iron Man (en cine, Paul Bettany). Jarvis **no descarga ni clona** ese audio.
 
 Oído continuo puede oír al propio TTS; Jarvis pausa el reconocimiento mientras habla.
 
@@ -55,7 +62,7 @@ npm install
 npm start
 ```
 
-Sin `OPENAI_API_KEY` Jarvis sigue con hora, perfil, apps, Discord, búsqueda, memoria y **TTS local**.
+Sin `OPENAI_API_KEY` Jarvis sigue con hora, perfil, apps, Discord, búsqueda, memoria, adjuntos y **TTS Edge neural** (`es-ES-AlvaroNeural`).
 
 ## Cómo generar el instalador
 
@@ -74,7 +81,7 @@ Ver `.env.example`:
 - `OPENAI_BASE_URL` — por defecto `https://api.openai.com/v1`
 - `OPENAI_MODEL` — por defecto `gpt-4o-mini`
 - `OPENAI_TTS_MODEL` — por defecto `tts-1`
-- `OPENAI_TTS_VOICE` — por defecto `nova`
+- `OPENAI_TTS_VOICE` — por defecto `fable` (varón británico; no es un clon del actor)
 
 ## Tests locales (también en Linux CI)
 

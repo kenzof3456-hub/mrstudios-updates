@@ -10,7 +10,8 @@ const { handleTurn, greeting } = require("./src/brain");
 const { isWindows } = require("./src/windows-apps");
 const { parseWake } = require("./src/wake");
 const { pickWakeLine } = require("./src/spoken");
-const { cloudTts, sapiSpeak } = require("./src/tts");
+const { cloudTts, sapiSpeak, edgeTts } = require("./src/tts");
+const { JARVIS_TTS } = require("./src/jarvis-voice");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
@@ -94,8 +95,8 @@ app.whenReady().then(() => {
   const ttsCfg = {
     apiKey: process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
-    voice: process.env.OPENAI_TTS_VOICE || "nova",
-    model: process.env.OPENAI_TTS_MODEL || "tts-1",
+    voice: process.env.OPENAI_TTS_VOICE || JARVIS_TTS.openaiVoice,
+    model: process.env.OPENAI_TTS_MODEL || JARVIS_TTS.openaiModel,
   };
 
   ipcMain.handle("jarvis:status", () => ({
@@ -103,6 +104,7 @@ app.whenReady().then(() => {
     isWindows,
     hasLlm: Boolean(llm.apiKey),
     hasCloudTts: Boolean(ttsCfg.apiKey),
+    ttsVoice: JARVIS_TTS.edgeVoices[0],
     greeting: greeting(profile, memory),
   }));
 
@@ -170,8 +172,12 @@ app.whenReady().then(() => {
   ipcMain.handle("jarvis:parse-wake", (_e, text) => parseWake(text));
 
   ipcMain.handle("jarvis:speak", async (_e, text) => {
+    const edge = await edgeTts(String(text || ""));
+    if (edge && edge.audio) {
+      return { method: "edge", audio: edge.audio, voice: edge.voice };
+    }
     const audio = await cloudTts({ ...ttsCfg, text: String(text || "") });
-    if (audio) return { method: "cloud", audio };
+    if (audio) return { method: "cloud", audio, voice: ttsCfg.voice };
     return { method: "local" };
   });
 
