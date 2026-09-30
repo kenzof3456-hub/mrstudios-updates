@@ -1,7 +1,7 @@
 const { normalize } = require("./intents");
 
 const FILLER =
-  /\b(oye|hey|ok|okay|eh|buenas|hola|rabbit|a ver|porfa|por favor)\b/g;
+  /\b(oye|hey|ok|okay|eh|buenas|hola|rabbit|senor|a ver|porfa|por favor)\b/g;
 
 function parseWake(raw) {
   const original = String(raw || "").trim();

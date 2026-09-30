@@ -112,7 +112,7 @@ async function openApp(appName) {
     return {
       ok: false,
       message: say(
-        "¡Ojo, Rabbit!",
+        "¡Ojo, Señor!",
         `Abrir «${appName}» es cosa de tu Windows.`,
         "En cuanto estemos en tu PC… ¡lo lanzo yo!"
       ),
@@ -125,7 +125,7 @@ async function openApp(appName) {
     return {
       ok: r.ok,
       message: r.ok
-        ? say("¡Dale, Rabbit!", "Abriendo Discord…", "Un segundo y estás dentro.")
+        ? say("¡Dale, Señor!", "Abriendo Discord…", "Un segundo y estás dentro.")
         : say(
             "Ay, no…",
             `Discord no quiso arrancar (${r.stderr || "error"}).`,
@@ -139,7 +139,7 @@ async function openApp(appName) {
       `Start-Process -FilePath '${known.exe.replace(/'/g, "''")}'`
     );
     if (r.ok) {
-      return { ok: true, message: say("¡Boom!", `Abrí ${appName}.`, "¿Seguimos, Rabbit?") };
+      return { ok: true, message: say("¡Boom!", `Abrí ${appName}.`, "¿Seguimos, Señor?") };
     }
   }
 
@@ -155,14 +155,14 @@ Write-Output $app.Name
   const r = await runPowershell(script);
   if (r.ok) {
     const name = r.stdout || appName;
-    return { ok: true, message: say("¡Listo!", `Abrí ${name}.`, "A jugar, Rabbit.") };
+    return { ok: true, message: say("¡Listo!", `Abrí ${name}.`, "A jugar, Señor.") };
   }
   return {
     ok: false,
     message: say(
       "Mmm, no la encuentro.",
       `«${appName}» no salió en Inicio ni en mis rutas.`,
-      r.stderr || r.stdout || "Si me das el nombre exacto, Rabbit, lo intento otra vez."
+      r.stderr || r.stdout || "Si me das el nombre exacto, Señor, lo intento otra vez."
     ),
   };
 }
@@ -172,7 +172,7 @@ async function closeApp(appName) {
     return {
       ok: false,
       message: say(
-        "¡Cuidado, Rabbit!",
+        "¡Cuidado, Señor!",
         `Cerrar «${appName}» solo lo puedo hacer en tu Windows.`,
         "Allí… un toque y desaparece."
       ),
@@ -201,7 +201,7 @@ async function closeApp(appName) {
     message: say(
       "Raro…",
       `No pude cerrar «${appName}».`,
-      "¿Seguro que estaba abierta, Rabbit? Si sigue ahí, lo cazamos otra vez."
+      "¿Seguro que estaba abierta, Señor? Si sigue ahí, lo cazamos otra vez."
     ),
   };
 }

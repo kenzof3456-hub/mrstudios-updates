@@ -8,12 +8,12 @@ function forSpeech(text) {
 
 const GREETINGS = {
   es: [
-    "Aquí estoy, Rabbit.",
+    "Aquí estoy, Señor.",
     "Te escuché.",
     "Dime.",
   ],
   en: [
-    "I'm here, Rabbit.",
+    "I'm here, Señor.",
     "Heard you.",
     "Go ahead.",
   ],

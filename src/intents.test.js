@@ -1,5 +1,6 @@
 const assert = require("assert");
 const { detectIntent } = require("./intents");
+const { clearPendingDanger } = require("./agency");
 
 const cases = [
   ["¿Qué hora es?", "datetime"],
@@ -30,6 +31,12 @@ const cases = [
   ["escribe un bot de Discord", "craft"],
   ["script de Blender que crea un cubo y exporta glTF", "craft"],
   ["guarda el codigo", "save_code"],
+  ["házmelo", "do_last"],
+  ["hazme esto", "do_last"],
+  ["do this", "do_last"],
+  ["hazme un bot de Discord", "craft"],
+  ["formatea el disco", "agency_refuse"],
+  ["borra el archivo discord_bot.js", "agency_ask"],
 ];
 
 for (const [text, type] of cases) {
@@ -37,8 +44,10 @@ for (const [text, type] of cases) {
   assert.strictEqual(got.type, type, `${text} => ${got.type}, expected ${type}`);
 }
 
+assert.strictEqual(detectIntent("hazme un bot de Discord").execute, true);
 assert.strictEqual(detectIntent("abre el bloc de notas").app.includes("bloc"), true);
 assert.strictEqual(detectIntent("dile a Pedro que llegué").to.toLowerCase().includes("pedro"), true);
 assert.match(detectIntent("manda un mensaje a mamá por WhatsApp que ya voy").body, /voy/i);
 assert.strictEqual(detectIntent("manda un mensaje a mamá por WhatsApp que ya voy").app, "whatsapp");
+clearPendingDanger();
 console.log("intents ok");

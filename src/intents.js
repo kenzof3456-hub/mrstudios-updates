@@ -1,6 +1,7 @@
 const { parseSendMessage } = require("./send-parse");
 const { parseVoiceCommand } = require("./voices");
 const { looksLikeCraft, looksLikeSaveCode } = require("./craft");
+const { peelDoIt, isWipe, isDestructive, consumeConfirm, setPendingDanger } = require("./agency");
 
 function normalize(text) {
   return String(text || "")
@@ -17,7 +18,7 @@ function stripAppFiller(name) {
     .trim();
 }
 
-function detectIntent(raw) {
+function detectCore(raw) {
   const t = normalize(raw);
   if (!t) return { type: "empty" };
 
@@ -40,8 +41,20 @@ function detectIntent(raw) {
   const forget = t.match(
     /^(olvida|borra|no recuerdes|forget)\s+(?:que |el dato |lo de |el hecho )?(.*)$/
   );
-  if (forget && forget[2] && !/^todo\b/.test(forget[2])) {
+  if (
+    forget &&
+    forget[2] &&
+    !/^todo\b/.test(forget[2]) &&
+    !/\b(archivo|file|carpeta|folder)\b/.test(forget[2])
+  ) {
     return { type: "forget", query: forget[2].trim() };
+  }
+
+  const delFile = t.match(
+    /^(borra(r)?|eliminar|delete)\s+(?:el |la |los |the )?(archivo|file|carpeta|folder)\s*(.*)$/
+  );
+  if (delFile) {
+    return { type: "delete_file", name: stripAppFiller(delFile[4] || "") };
   }
 
   if (looksLikeSaveCode(raw)) {
@@ -118,7 +131,7 @@ function detectIntent(raw) {
   }
 
   if (
-    /(quien soy|quien es rabbit|mi perfil|como me llamo|quien es luis|datos de usuario|who am i|who is rabbit|what(?:'| i)?s my name)/.test(
+    /(quien soy|quien es (rabbit|senor)|mi perfil|como me llamo|quien es luis|datos de usuario|who am i|who is (rabbit|senor)|what(?:'| i)?s my name)/.test(
       t
     )
   ) {
@@ -150,4 +163,32 @@ function detectIntent(raw) {
   return { type: "question", query: String(raw).trim() };
 }
 
-module.exports = { detectIntent, normalize };
+function detectIntent(raw) {
+  const confirmed = consumeConfirm(raw);
+  if (confirmed) return confirmed;
+
+  if (isWipe(raw)) {
+    return { type: "agency_refuse", query: String(raw).trim() };
+  }
+
+  const peeled = peelDoIt(raw);
+  const work = peeled.bare ? "" : peeled.rest || raw;
+  const probe = peeled.bare ? "" : work;
+
+  if (probe && isDestructive(probe)) {
+    const inner = detectCore(probe);
+    setPendingDanger({ ...inner, query: probe, execute: true });
+    return { type: "agency_ask", query: probe };
+  }
+
+  if (peeled.execute && (peeled.bare || !work)) {
+    return { type: "do_last", execute: true };
+  }
+
+  const inner = detectCore(work);
+  if (peeled.execute) inner.execute = true;
+  if (inner.type === "craft" && inner.query) inner.query = work;
+  return inner;
+}
+
+module.exports = { detectIntent, detectCore, normalize };

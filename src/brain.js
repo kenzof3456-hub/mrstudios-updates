@@ -1,5 +1,7 @@
+const fs = require("fs");
+const path = require("path");
 const { detectIntent } = require("./intents");
-const { describeProfile } = require("./profile");
+const { describeProfile, address } = require("./profile");
 const { formatNow } = require("./time");
 const { openApp, closeApp, isWindows } = require("./windows-apps");
 const { enableDiscordCamera } = require("./discord");
@@ -20,18 +22,20 @@ const {
   getLastFiles,
   writeCraftFile,
 } = require("./craft");
+const { setLastJob, executeLast, writeAll } = require("./agency");
 
 function systemPrompt(profile, memory, lang) {
   const langName = languageName(lang || profile.language || "es");
   return [
     `You are Jarvis, desktop assistant for ${profile.realName}.`,
-    `Always call him Rabbit (use Luis only if he asks his real name).`,
+    `Always call him ${address(profile)} (use Luis only if he asks his real name).`,
     `Reply in ${langName}. Match his language exactly.`,
     `Tone: warm, composed, a spark of wit when it fits. Not hyper. Not a joke every line. Not theatrical. Alive, not carnival.`,
     `Keep answers free-form but concise. Skip forced catchphrases.`,
-    `You can write real code (any common language), game/mod scripts (original only), Discord bots, Windows automation, and Blender/3D help (bpy, geometry nodes, glTF/OBJ). Never pirate paid mods or assets.`,
+    `You do not only advise: when he asks to make a file, script, or model, write it to disk. When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
+    `Ask once before deleting files or installing unknowns. Refuse OS wipes (format disk, rm -rf /, factory reset). Original code only — never pirate paid mods.`,
     `System: ${profile.os}.`,
-    `Rabbit's memory:\n${memory.contextBlock()}`,
+    `${address(profile)}'s memory:\n${memory.contextBlock()}`,
     `Use memories when they help. Cite web sources in one line.`,
   ].join(" ");
 }
@@ -87,6 +91,68 @@ async function handleTurn({
   if (intent.type === "empty") {
     return {
       reply: say(tx(lang, "Te escucho.", "I'm listening.")),
+      intent: intent.type,
+      language: lang,
+    };
+  }
+
+  if (intent.type === "agency_refuse") {
+    return {
+      reply: tx(
+        lang,
+        "Eso no. No formateo discos ni borro el sistema.",
+        "No. I won't wipe disks or the OS."
+      ),
+      intent: intent.type,
+      language: lang,
+    };
+  }
+
+  if (intent.type === "agency_ask") {
+    return {
+      reply: tx(
+        lang,
+        `¿Confirmas? «${intent.query}». Dilo una vez: sí o no.`,
+        `Confirm once: “${intent.query}”. Yes or no.`
+      ),
+      intent: intent.type,
+      language: lang,
+    };
+  }
+
+  if (intent.type === "agency_cancel") {
+    return {
+      reply: tx(lang, "Cancelado.", "Cancelled."),
+      intent: intent.type,
+      language: lang,
+    };
+  }
+
+  if (intent.type === "do_last") {
+    const did = await executeLast(craftDir, lang);
+    return { reply: did.reply, intent: intent.type, language: lang, saved: did.saved };
+  }
+
+  if (intent.type === "delete_file") {
+    const name = String(intent.name || "").replace(/[/\\]/g, "");
+    if (!craftDir || !name) {
+      return {
+        reply: tx(lang, "Dime el archivo de craft a borrar.", "Name the craft file to delete."),
+        intent: intent.type,
+        language: lang,
+      };
+    }
+    const dest = path.join(craftDir, name);
+    if (!dest.startsWith(craftDir) || !fs.existsSync(dest)) {
+      return {
+        reply: tx(lang, `No está en craft: ${name}`, `Not in craft: ${name}`),
+        intent: intent.type,
+        language: lang,
+      };
+    }
+    fs.unlinkSync(dest);
+    return {
+      reply: tx(lang, `Borrado: ${dest}`, `Deleted: ${dest}`),
       intent: intent.type,
       language: lang,
     };
@@ -202,7 +268,7 @@ async function handleTurn({
         n === 0
           ? tx(lang, "Ya estaba vacía.", "It was already empty.")
           : tx(lang, `Borré ${n} recuerdos.`, `Cleared ${n} notes.`),
-        tx(lang, "Sigo sabiendo que eres Luis y te llamo Rabbit.", "I still know you're Luis and I call you Rabbit.")
+        tx(lang, `Sigo sabiendo que eres Luis y te llamo ${address(profile)}.`, `I still know you're Luis and I call you ${address(profile)}.`)
       ),
       intent: intent.type,
       language: lang,
@@ -231,6 +297,7 @@ async function handleTurn({
 
   if (intent.type === "open_app") {
     const r = await openApp(intent.app);
+    setLastJob({ type: "open_app", app: intent.app });
     return {
       reply: say(r.message, aside(memory, intent.app, lang)),
       intent: intent.type,
@@ -320,6 +387,7 @@ async function handleTurn({
       };
     }
     const saved = files.map((f) => writeCraftFile(craftDir, f));
+    setLastJob({ type: "craft", saved, files });
     return {
       reply: say(
         tx(lang, "Guardado.", "Saved."),
@@ -348,7 +416,7 @@ async function handleTurn({
       ],
     });
     const local = localFallback(intent.query, lang);
-    const reply =
+    let reply =
       llmText ||
       (local && local.reply) ||
       tx(
@@ -359,11 +427,22 @@ async function handleTurn({
     let files = extractFiles(reply, intent.query);
     if (!files.length && local && local.files) files = local.files;
     setLastFiles(files);
+    let saved = [];
+    if (files.length && craftDir) {
+      saved = writeAll(craftDir, files);
+      setLastJob({ type: "craft", saved, files });
+      reply = say(
+        reply,
+        tx(lang, "Hecho. En disco:", "Done. On disk:"),
+        saved.join("\n")
+      );
+    }
     return {
       reply,
       intent: intent.type,
       language: lang,
       files,
+      saved,
       llm: Boolean(llmText),
     };
   }
@@ -381,7 +460,7 @@ async function handleTurn({
       {
         role: "user",
         content:
-          `Rabbit: ${intent.query}\n\n` +
+          `${address(profile)}: ${intent.query}\n\n` +
           `Web:\n` +
           (results.length
             ? results
@@ -417,9 +496,9 @@ function greeting(profile, memory) {
     ? tx(lang, `${facts.length} notas guardadas.`, `${facts.length} notes saved.`)
     : "";
   return say(
-    tx(lang, "En línea, Rabbit.", "Online, Rabbit."),
+    tx(lang, `En línea, ${address(profile)}.`, `Online, ${address(profile)}.`),
     `${time}. ${weekday}, ${date} (${timeZone}).`,
-    tx(lang, "Adjuntar, mensajes, voces: abajo y arriba. También código y Blender.", "Attach, messages, voices: bottom and top. I can also write code and Blender scripts."),
+    tx(lang, "Adjuntar, mensajes, voces: abajo y arriba. Código y Blender: los escribo. Di «házmelo» y lo ejecuto.", "Attach, messages, voices: bottom and top. I write code and Blender scripts. Say “do this” and I execute."),
     win,
     wink
   );

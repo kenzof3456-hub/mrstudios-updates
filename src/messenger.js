@@ -56,7 +56,7 @@ function createMessenger({ memory }) {
     const dest = who.search !== who.label ? `${who.label} (${who.search})` : who.label;
     if (result.did === "not-windows") {
       return say(
-        "Lo tengo claro, Rabbit. Aquí no es Windows.",
+        "Lo tengo claro, Señor. Aquí no es Windows.",
         `Iba a mandar a ${dest} por ${app}: «${body}».`,
         result.detail,
         "En tu PC abro la app, busco el contacto, pego el texto y pulso enviar."
@@ -64,13 +64,13 @@ function createMessenger({ memory }) {
     }
     if (result.ok) {
       return say(
-        "¡Hecho, Rabbit!",
+        "¡Hecho, Señor!",
         `Para ${dest} por ${app}: «${body}».`,
         result.detail
       );
     }
     return say(
-      "Casi, Rabbit.",
+      "Casi, Señor.",
       `Quería mandar a ${dest} por ${app}: «${body}».`,
       result.detail || "Algo bloqueó el envío.",
       "No invento contactos. Si falta número o correo, dímelo y lo recuerdo."
@@ -86,13 +86,13 @@ function createMessenger({ memory }) {
       pending = { to: "", body: "", app, missing: "to" };
       return say(
         "¡Claro!",
-        "¿A quién se lo mando y qué le digo, Rabbit?",
+        "¿A quién se lo mando y qué le digo, Señor?",
         "Sin destinatario y sin texto no envío nada."
       );
     }
     if (!to) {
       pending = { to: "", body, app, missing: "to" };
-      return say("¿A quién, Rabbit?", "Necesito un nombre. No invento contactos.");
+      return say("¿A quién, Señor?", "Necesito un nombre. No invento contactos.");
     }
     if (!body) {
       pending = { to, body: "", app, missing: "body" };

@@ -70,10 +70,10 @@ function createSight({ dir, captureFn, llm }) {
     if (!has() || last.kind !== "image") return null;
     const inLang = lang === "en" ? "English" : lang === "es" ? "Spanish" : "the user's language";
     const prompt = [
-      `You are Jarvis. Describe Rabbit's image in ${inLang}. Warm, brief, not theatrical.`,
+      `You are Jarvis. Describe Señor's image in ${inLang}. Warm, brief, not theatrical.`,
       "If there is a person, say who they appear to be (name if obvious, else a description).",
       "Final line exactly: BUSCAR: <short web query for the main subject>.",
-      question ? `Rabbit: ${question}` : "",
+      question ? `Señor: ${question}` : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -131,14 +131,14 @@ function createSight({ dir, captureFn, llm }) {
       return say(
         "Ay, no pude capturar el monitor.",
         "En Windows a veces pide permiso de grabación de pantalla.",
-        "Vuelve a decir «mira mi pantalla», Rabbit."
+        "Vuelve a decir «mira mi pantalla», Señor."
       );
     }
     if (!has() || last.kind !== "image") {
       return say(
         "Ay, no pude capturar el monitor.",
         "En Windows a veces pide permiso de grabación de pantalla.",
-        "Vuelve a decir «mira mi pantalla», Rabbit."
+        "Vuelve a decir «mira mi pantalla», Señor."
       );
     }
 

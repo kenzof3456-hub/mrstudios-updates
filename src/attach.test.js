@@ -16,10 +16,10 @@ assert.strictEqual(safeName("hi/../x.png"), "hi_.._x.png");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "jarvis-att-"));
 const src = path.join(dir, "hola.txt");
-fs.writeFileSync(src, "Rabbit dice hola desde un adjunto.");
+fs.writeFileSync(src, "Luis dice hola desde un adjunto.");
 const dest = copyIntoUploads(dir, src);
 assert.ok(fs.existsSync(dest));
-assert.match(readTextSnippet(dest), /Rabbit/);
+assert.match(readTextSnippet(dest), /hola/);
 
 const sight = createSight({
   dir,
@@ -34,7 +34,7 @@ assert.strictEqual(sight.has(), true);
 
 (async () => {
   const looked = await sight.lookAttached("mira esto");
-  assert.match(looked, /hola.txt|Rabbit/i);
+  assert.match(looked, /hola.txt|hola/i);
 
   const profile = loadProfile(dir);
   const memory = createMemory(path.join(dir, "memory.json"));
@@ -48,7 +48,7 @@ assert.strictEqual(sight.has(), true);
     useAttach: true,
   });
   assert.strictEqual(turn.intent, "look_attach");
-  assert.match(turn.reply, /Rabbit|hola/i);
+  assert.match(turn.reply, /hola/i);
   assert.strictEqual(detectIntent("mira esto").type, "look_attach");
   console.log("attach ok");
 })().catch((e) => {

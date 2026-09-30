@@ -9,4 +9,5 @@ assert.strictEqual(parseWake("qué hora es").woke, false);
 assert.strictEqual(parseWake("hola Jarvis qué hora es").woke, true);
 assert.strictEqual(parseWake("qué es jarvis").woke, false);
 assert.strictEqual(parseWake("Rabbit Jarvis abre chrome").rest.toLowerCase().includes("chrome"), true);
+assert.strictEqual(parseWake("Señor Jarvis abre chrome").rest.toLowerCase().includes("chrome"), true);
 console.log("wake ok");

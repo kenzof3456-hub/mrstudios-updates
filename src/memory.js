@@ -80,7 +80,7 @@ function createMemory(filePath) {
   }
 
   function contextBlock() {
-    if (!store.facts.length) return "Aún no hay recuerdos extra de Rabbit.";
+    if (!store.facts.length) return "Aún no hay recuerdos extra de Señor.";
     return store.facts.map((f, i) => `${i + 1}. ${f.text}`).join("\n");
   }
 

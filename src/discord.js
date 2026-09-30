@@ -9,7 +9,7 @@ async function enableDiscordCamera() {
       ok: false,
       did: "none",
       message: say(
-        "¡Ojo, Rabbit!",
+        "¡Ojo, Señor!",
         "La cámara de Discord la controlo en tu Windows, no aquí.",
         "Allí abro Discord y mando Ctrl+Shift+V. Promesa."
       ),
@@ -44,7 +44,7 @@ Write-Output 'sent'
         already ? "¡Discord ya estaba despierto!" : "¡Abrí Discord!",
         `Enfoqué la ventana y mandé ${CAMERA_KEYBIND} (cámara).`,
         "Ojo: Discord no deja forzar ni leer la webcam. Esto es lo más cerca que llega.",
-        `Si no se encendió, asigna «Activar cámara» a ${CAMERA_KEYBIND} y me avisas, Rabbit.`
+        `Si no se encendió, asigna «Activar cámara» a ${CAMERA_KEYBIND} y me avisas, Señor.`
       ),
     };
   }
@@ -58,7 +58,7 @@ Write-Output 'sent'
         ? "No pude mandar el atajo. A veces la ventana tarda."
         : "Sin ventana, no hay cámara.",
       `Atajo: ${CAMERA_KEYBIND}. No hay forma fiable de forzar la cam.`,
-      "Lo intentamos otra vez cuando quieras, Rabbit."
+      "Lo intentamos otra vez cuando quieras, Señor."
     ),
   };
 }

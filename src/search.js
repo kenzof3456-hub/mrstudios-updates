@@ -11,7 +11,7 @@ function fetchText(urlString) {
         path: url.pathname + url.search,
         method: "GET",
         headers: {
-          "User-Agent": "Jarvis/1.0 (desktop assistant for Rabbit)",
+          "User-Agent": "Jarvis/1.0 (desktop assistant for Señor)",
           Accept: "text/html,application/json",
         },
       },

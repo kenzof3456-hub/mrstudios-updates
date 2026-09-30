@@ -115,7 +115,7 @@ async function send(text) {
     }
     await talk(reply);
   } catch (err) {
-    const msg = "Fallo de enlace, Rabbit: " + err.message;
+    const msg = "Fallo de enlace, Señor: " + err.message;
     addMsg("jarvis", msg);
     await talk(msg);
   } finally {
@@ -163,7 +163,7 @@ async function armMic() {
   } catch (err) {
     addMsg(
       "jarvis",
-      "¡Ojo, Rabbit! No hay micrófono. En Windows: Privacidad → Micrófono → apps de escritorio."
+      "¡Ojo, Señor! No hay micrófono. En Windows: Privacidad → Micrófono → apps de escritorio."
     );
     return false;
   }
@@ -248,7 +248,7 @@ attachBtn.addEventListener("click", async () => {
     const picked = await window.jarvis.pickFile();
     if (!picked || picked.cancelled) return;
     if (!picked.ok) {
-      addMsg("jarvis", picked.error || "No pude adjuntar eso, Rabbit.");
+      addMsg("jarvis", picked.error || "No pude adjuntar eso, Señor.");
       return;
     }
     showAttach(picked);
@@ -272,7 +272,7 @@ if (voicePick) {
       lang: o.dataset.lang,
       gender: o.dataset.gender,
     });
-    await talk("Así sueno ahora, Rabbit. " + o.dataset.label + ".");
+    await talk("Así sueno ahora, Señor. " + o.dataset.label + ".");
   });
 }
 

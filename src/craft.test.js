@@ -61,6 +61,8 @@ const { loadProfile } = require("./profile");
   assert.strictEqual(made.intent, "craft");
   assert.match(made.reply, /discord\.js/);
   assert.ok(made.files.length);
+  assert.ok(made.saved && made.saved[0]);
+  assert.ok(fs.existsSync(made.saved[0]));
 
   const saved = await handleTurn({
     text: "guarda el codigo",

@@ -2,14 +2,14 @@
 
 Asistente de escritorio **nativo para Windows** (Electron). No es un sitio web.
 
-Jarvis habla con **Rabbit** (Luis). Contesta en el **mismo idioma** que Rabbit (español, inglés, etc.). Tono: cálido, un toque de ingenio, sin carnaval.
+Jarvis habla con **Señor** (Luis). Contesta en el **mismo idioma** que Señor (español, inglés, etc.). Tono: cálido, un toque de ingenio, sin carnaval.
 
 ## Qué hace (v1)
 
 1. Chat de texto **y por voz**.
 2. Abre y cierra apps de Windows por nombre (menú Inicio, rutas conocidas, `taskkill`). Confirma en el chat.
-3. Perfil local persistente: Luis / Rabbit / Windows.
-4. **Memoria local** (`userData/memory.json`): si Rabbit cuenta hechos (gustos, apps, Discord, horarios, cómo le gusta que le hablen), Jarvis los guarda y los usa después. «qué sabes de mí» los lista; «olvida X» o «olvida todo» los borra.
+3. Perfil local persistente: Luis / Señor / Windows.
+4. **Memoria local** (`userData/memory.json`): si Señor cuenta hechos (gustos, apps, Discord, horarios, cómo le gusta que le hablen), Jarvis los guarda y los usa después. «qué sabes de mí» los lista; «olvida X» o «olvida todo» los borra.
 5. Cámara de Discord (mejor esfuerzo): abre Discord si hace falta, enfoca la ventana y envía **Ctrl+Shift+V** (Toggle Camera).
 6. Preguntas generales: busca en la web y responde en español, con fuentes cortas.
 7. Hora, día de la semana y fecha en español, zona horaria local de Windows.
@@ -17,9 +17,10 @@ Jarvis habla con **Rabbit** (Luis). Contesta en el **mismo idioma** que Rabbit (
 9. **Pantalla (solo si lo pides):** «mira mi pantalla» captura el monitor principal y la guarda en `userData/last-screen.png`. Nunca en segundo plano. «qué es esto» / «quién es»: visión (si hay API) u OCR local (`tesseract`), luego búsqueda web. La imagen solo se envía al LLM que configuraste.
 10. **Mensajes a una persona:** «manda a mamá por WhatsApp que ya voy». Parsea destinatario, texto y app (WhatsApp, Discord, Telegram, SMS, correo). Si no dices app, usa un recuerdo tipo «usa WhatsApp para mamá» o pregunta **una vez** y lo guarda. En Windows abre/enfoca la app (URI `whatsapp://`, `wa.me`, `discord`, `tg://`, `mailto:`, `sms:`), busca el contacto, pega y Enter. Confirma en voz qué se mandó o qué lo bloqueó. Sin destinatario + mensaje claros, no envía. Apodos desde `memory.json`; no inventa números ni correos.
 11. **Adjuntar:** botón visible **Adjuntar** en el compositor (no detrás del orbe). Fotos, capturas y docs se copian a `userData/uploads`. Preview pequeña. El siguiente mensaje (o «mira esto» / enviar vacío) usa el archivo. Imágenes: misma visión/OCR que la pantalla, luego búsqueda si preguntas quién/qué. Solo local, salvo el LLM que configuraste.
-12. **Código y 3D:** programas, scripts de juegos (Minecraft, Roblox Lua, FiveM — originales), bots de Discord, automatización Windows, Blender (`bpy`, geometry nodes, glTF/OBJ). Pega código real. «guarda el archivo» lo escribe en `userData/craft`. No piratea mods de pago.
+12. **Código y 3D:** programas, scripts de juegos (Minecraft, Roblox Lua, FiveM — originales), bots de Discord, automatización Windows, Blender (`bpy`, geometry nodes, glTF/OBJ). Escribe el archivo en `userData/craft` al pedirlo (no solo lo aconseja). «guarda el archivo» lo vuelve a escribir. No piratea mods de pago.
+13. **Agencia:** «hazme esto», «házmelo», «do this» ejecuta lo último o lo que acabas de pedir (archivo, app, mensaje, script en disco). Pregunta **una vez** si es borrar o instalar algo desconocido. Rechaza formateos / wipes del SO.
 
-Tono: cálido, vivo, sin excesos. UI: esfera holográfica cian (anillos, sparks). Chat secundario.
+Tono: cálido, vivo, sin excesos. UI: esfera holográfica cian (anillos, sparks). Chat secundario. Le habla de **Señor**.
 
 ## Micrófono (Windows)
 
@@ -47,7 +48,7 @@ Nunca captura en segundo plano. Di **«Jarvis, mira mi pantalla»**. Luego **«q
 
 Discord **no tiene API pública** para encender la webcam ni para leer si quedó activa. Jarvis hace lo más cercano que funciona: lanzar Discord + atajo de teclado. En Ajustes de Discord → Atajos de teclado, asigna **Activar cámara** a `Ctrl+Shift+V`. Si no está asignado, Jarvis te lo dice claro en el chat.
 
-## Requisitos (PC de Rabbit)
+## Requisitos (PC de Señor)
 
 - Windows 10/11
 - [Node.js 20+](https://nodejs.org/) (incluye npm)
