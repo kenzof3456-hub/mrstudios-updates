@@ -1,8 +1,10 @@
 require("dotenv").config();
+const fs = require("fs");
 const path = require("path");
-const { app, BrowserWindow, ipcMain, session } = require("electron");
+const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen } = require("electron");
 const { loadProfile } = require("./src/profile");
 const { createMemory } = require("./src/memory");
+const { createSight } = require("./src/sight");
 const { handleTurn, greeting } = require("./src/brain");
 const { isWindows } = require("./src/windows-apps");
 const { parseWake } = require("./src/wake");
@@ -10,6 +12,41 @@ const { pickWakeLine } = require("./src/spoken");
 const { cloudTts, sapiSpeak } = require("./src/tts");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+
+async function capturePrimary(filePath) {
+  const primary = screen.getPrimaryDisplay();
+  const factor = primary.scaleFactor || 1;
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: {
+      width: Math.min(1600, Math.round(primary.size.width * factor)),
+      height: Math.min(900, Math.round(primary.size.height * factor)),
+    },
+  });
+  const src =
+    sources.find((s) => String(s.display_id) === String(primary.id)) || sources[0];
+  if (!src || src.thumbnail.isEmpty()) {
+    throw new Error("no-screen");
+  }
+  const png = src.thumbnail.toPNG();
+  fs.writeFileSync(filePath, png);
+  return {
+    path: filePath,
+    dataUrl: "data:image/png;base64," + png.toString("base64"),
+  };
+}
+
+async function captureUserScreen(filePath) {
+  const win = BrowserWindow.getAllWindows()[0];
+  const wasVisible = win && win.isVisible();
+  try {
+    if (win && wasVisible) win.hide();
+    await new Promise((r) => setTimeout(r, 280));
+    return await capturePrimary(filePath);
+  } finally {
+    if (win && wasVisible) win.show();
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -36,7 +73,7 @@ app.whenReady().then(() => {
     callback(["media", "microphone", "audioCapture", "display-capture"].includes(permission));
   });
   session.defaultSession.setPermissionCheckHandler((_wc, permission) =>
-    ["media", "microphone", "audioCapture"].includes(permission)
+    ["media", "microphone", "audioCapture", "display-capture"].includes(permission)
   );
 
   const profile = loadProfile(app.getPath("userData"));
@@ -45,7 +82,13 @@ app.whenReady().then(() => {
     apiKey: process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
     model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    visionModel: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini",
   };
+  const sight = createSight({
+    dir: app.getPath("userData"),
+    captureFn: captureUserScreen,
+    llm,
+  });
   const ttsCfg = {
     apiKey: process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
@@ -64,7 +107,7 @@ app.whenReady().then(() => {
   ipcMain.handle("jarvis:chat", async (_evt, payload) => {
     const text = String(payload?.text || "");
     const history = Array.isArray(payload?.history) ? payload.history : [];
-    return handleTurn({ text, history, profile, llm, memory });
+    return handleTurn({ text, history, profile, llm, memory, sight });
   });
 
   ipcMain.handle("jarvis:wake-line", () => pickWakeLine());

@@ -56,6 +56,29 @@ function detectIntent(raw) {
   }
 
   if (
+    /(mira|ve|ver|echa un vistazo|captura|screenshot|fotografia).{0,50}(pantalla|screen|monitor|escritorio)|mira mi pantalla|look at (my )?(screen|display)/.test(
+      t
+    )
+  ) {
+    const alsoAsk =
+      /(esto|eso|quien es|que es|busca|persona|que hay|que estoy viendo|informacion|de la pantalla)/.test(
+        t
+      );
+    return {
+      type: alsoAsk ? "look_ask" : "look_screen",
+      query: String(raw).trim(),
+    };
+  }
+
+  if (
+    /(esto|eso|en (la )?pantalla|esta captura|lo que (ves|estas viendo)|esta persona|quien es (este|esta|ese|esa)|busca (esto|eso))/.test(
+      t
+    )
+  ) {
+    return { type: "screen_ask", query: String(raw).trim() };
+  }
+
+  if (
     /(camara|camera|webcam|video).{0,40}(discord)|(discord).{0,40}(camara|camera|webcam|video)/.test(
       t
     ) ||

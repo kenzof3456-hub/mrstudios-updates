@@ -1,7 +1,7 @@
 const https = require("https");
 const { URL } = require("url");
 
-function chatWithLlm({ apiKey, baseUrl, model, messages }) {
+function postChat({ apiKey, baseUrl, model, messages, timeout = 45000 }) {
   if (!apiKey) return Promise.resolve(null);
   const root = (baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
   const url = new URL(`${root}/chat/completions`);
@@ -30,8 +30,7 @@ function chatWithLlm({ apiKey, baseUrl, model, messages }) {
         res.on("end", () => {
           try {
             const json = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-            const text = json.choices?.[0]?.message?.content;
-            resolve(text || null);
+            resolve(json.choices?.[0]?.message?.content || null);
           } catch {
             resolve(null);
           }
@@ -39,7 +38,7 @@ function chatWithLlm({ apiKey, baseUrl, model, messages }) {
       }
     );
     req.on("error", () => resolve(null));
-    req.setTimeout(25000, () => {
+    req.setTimeout(timeout, () => {
       req.destroy();
       resolve(null);
     });
@@ -48,4 +47,27 @@ function chatWithLlm({ apiKey, baseUrl, model, messages }) {
   });
 }
 
-module.exports = { chatWithLlm };
+function chatWithLlm({ apiKey, baseUrl, model, messages }) {
+  return postChat({ apiKey, baseUrl, model, messages, timeout: 25000 });
+}
+
+function visionRead({ apiKey, baseUrl, model, dataUrl, prompt }) {
+  if (!apiKey || !dataUrl) return Promise.resolve(null);
+  return postChat({
+    apiKey,
+    baseUrl,
+    model: model || "gpt-4o-mini",
+    timeout: 45000,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: dataUrl } },
+        ],
+      },
+    ],
+  });
+}
+
+module.exports = { chatWithLlm, visionRead };

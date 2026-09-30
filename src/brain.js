@@ -23,7 +23,7 @@ function systemPrompt(profile, memory) {
   ].join(" ");
 }
 
-async function handleTurn({ text, history, profile, llm, memory }) {
+async function handleTurn({ text, history, profile, llm, memory, sight }) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
   if (parsed.woke && !work) {
@@ -155,6 +155,32 @@ async function handleTurn({ text, history, profile, llm, memory }) {
       ok: r.ok,
       did: r.did,
     };
+  }
+
+  if (intent.type === "look_screen") {
+    if (!sight) {
+      return { reply: say("Aún no tengo ojos, Rabbit."), intent: intent.type };
+    }
+    return { reply: await sight.lookOnly(), intent: intent.type };
+  }
+
+  if (intent.type === "look_ask" || intent.type === "screen_ask") {
+    if (!sight) {
+      return { reply: say("Aún no tengo ojos, Rabbit."), intent: intent.type };
+    }
+    if (intent.type === "screen_ask" && !sight.has()) {
+      return {
+        reply: say(
+          "Aún no he mirado tu pantalla, Rabbit.",
+          "Dime «mira mi pantalla» primero. Nunca miro sin que me lo pidas."
+        ),
+        intent: intent.type,
+      };
+    }
+    const reply = await sight.lookAndAnswer(intent.query, {
+      recapture: intent.type === "look_ask",
+    });
+    return { reply, intent: intent.type };
   }
 
   const results = await searchWeb(intent.query);

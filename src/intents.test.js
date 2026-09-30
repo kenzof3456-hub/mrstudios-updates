@@ -15,6 +15,9 @@ const cases = [
   ["qué sabes de mí", "recall"],
   ["olvida el café", "forget"],
   ["olvida todo", "forget_all"],
+  ["mira mi pantalla", "look_screen"],
+  ["mira la pantalla y busca quién es", "look_ask"],
+  ["qué es esto", "screen_ask"],
 ];
 
 for (const [text, type] of cases) {
