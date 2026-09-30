@@ -28,7 +28,37 @@ const COUNTRIES = [
   { re: /\b(canada)\b/, code: "CA", tz: "America/Toronto", name: { es: "Canadá", en: "Canada" } },
   { re: /\b(australia)\b/, code: "AU", tz: "Australia/Sydney", name: { es: "Australia", en: "Australia" } },
   { re: /\b(india)\b/, code: "IN", tz: "Asia/Kolkata", name: { es: "India", en: "India" } },
+  { re: /\b(tailandia|thailand)\b/, code: "TH", tz: "Asia/Bangkok", name: { es: "Tailandia", en: "Thailand" } },
+  { re: /\b(portugal)\b/, code: "PT", tz: "Europe/Lisbon", name: { es: "Portugal", en: "Portugal" } },
+  { re: /\b(paises bajos|holanda|netherlands|holland)\b/, code: "NL", tz: "Europe/Amsterdam", name: { es: "Países Bajos", en: "Netherlands" } },
+  { re: /\b(suecia|sweden)\b/, code: "SE", tz: "Europe/Stockholm", name: { es: "Suecia", en: "Sweden" } },
+  { re: /\b(noruega|norway)\b/, code: "NO", tz: "Europe/Oslo", name: { es: "Noruega", en: "Norway" } },
+  { re: /\b(islandia|iceland)\b/, code: "IS", tz: "Atlantic/Reykjavik", name: { es: "Islandia", en: "Iceland" } },
+  { re: /\b(nueva zelanda|new zealand)\b/, code: "NZ", tz: "Pacific/Auckland", name: { es: "Nueva Zelanda", en: "New Zealand" } },
+  { re: /\b(irlanda|ireland)\b/, code: "IE", tz: "Europe/Dublin", name: { es: "Irlanda", en: "Ireland" } },
+  { re: /\b(sudafrica|south africa)\b/, code: "ZA", tz: "Africa/Johannesburg", name: { es: "Sudáfrica", en: "South Africa" } },
+  { re: /\b(filipinas|philippines)\b/, code: "PH", tz: "Asia/Manila", name: { es: "Filipinas", en: "Philippines" } },
+  { re: /\b(turquia|turkey)\b/, code: "TR", tz: "Europe/Istanbul", name: { es: "Turquía", en: "Turkey" } },
 ];
+
+function guessNamedPlace(raw) {
+  const t = nrm(raw);
+  const m = t.match(
+    /\b(?:en|in)\s+(?:el |la |los |las |the )?([a-z][a-z\s]{1,36}?)(?:\s+(hoy|today|ahora|tonight))?$/
+  );
+  if (!m) return null;
+  const name = m[1]
+    .replace(/\b(tv|tele|television|programacion|guia|listings|schedule|canal)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!name || name.length < 3) return null;
+  if (/^(hoy|tv|tele|la|el)$/.test(name)) return null;
+  return {
+    code: "",
+    tz: "UTC",
+    name: { es: name, en: name },
+  };
+}
 
 function looksLikeTv(raw) {
   const t = nrm(raw);
@@ -49,6 +79,8 @@ function parseCountry(raw, lang) {
   for (const c of COUNTRIES) {
     if (c.re.test(t)) return c;
   }
+  const named = guessNamedPlace(raw);
+  if (named) return named;
   if (lang === "en") return COUNTRIES.find((c) => c.code === "US");
   return COUNTRIES.find((c) => c.code === "MX");
 }
@@ -157,7 +189,7 @@ async function tvmazeShow(query, wantCast) {
 async function lookupTv(query, lang) {
   const country = parseCountry(query, lang);
   const wantCast = isCastAsk(query);
-  const listings = await tvmazeSchedule(country);
+  const listings = country.code ? await tvmazeSchedule(country) : [];
   const needle = showNeedle(query);
   let show = null;
   if (needle && needle.length > 2 && (wantCast || !/^(tv|tele|television)$/i.test(needle))) {
@@ -165,7 +197,7 @@ async function lookupTv(query, lang) {
   }
   const webQ = wantCast
     ? `${needle} cast official`
-    : `${country.name.en} TV schedule today listings`;
+    : `${country.name.en} TV schedule today legal listings`;
   const web = await searchWeb(webQ);
   return { country, listings, show, web, wantCast, date: localDate(country.tz) };
 }
