@@ -60,7 +60,7 @@ function addMsg(role, text) {
   el.className = `msg ${role}`;
   const who = document.createElement("span");
   who.className = "who";
-  who.textContent = role === "jarvis" ? "JARVIS" : "RABBIT";
+  who.textContent = role === "jarvis" ? "JARVIS" : "SEÑOR";
   el.appendChild(who);
   el.appendChild(document.createTextNode(text));
   logEl.appendChild(el);
