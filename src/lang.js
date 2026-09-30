@@ -50,8 +50,8 @@ function detectLanguage(text, fallback = "es") {
   const raw = String(text || "").trim();
   if (!raw) return fallback || "es";
   const greet = nrm(raw).replace(/[.!?]+$/g, "").trim();
-  if (/^(hello|hi)(\s+jarvis)?$/.test(greet)) return "en";
-  if (/^hola(\s+jarvis)?$/.test(greet)) return "es";
+  if (/^(jarvis\s+)?(hello|hi)(\s+jarvis)?$/.test(greet)) return "en";
+  if (/^(jarvis\s+)?hola(\s+jarvis)?$/.test(greet)) return "es";
   if (/[\u3040-\u30ff]/.test(raw)) return "ja";
   if (/[\uac00-\ud7af]/.test(raw)) return "ko";
   if (/[\u4e00-\u9fff]/.test(raw)) return "zh";

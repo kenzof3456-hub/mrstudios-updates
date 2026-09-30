@@ -18,6 +18,8 @@ const app = fs.readFileSync(path.join(root, "renderer", "app.js"), "utf8");
 assert.strictEqual(DEFAULT_PROFILE.nickname, "Señor");
 assert.strictEqual(detectIntent("hola").type, "hello");
 assert.strictEqual(detectIntent("hello").type, "hello");
+assert.strictEqual(detectIntent("hola Jarvis").type, "hello");
+assert.strictEqual(detectIntent("Jarvis hola").type, "hello");
 assert.doesNotMatch(GREETINGS.es.join(" "), /Rabbit/);
 assert.match(app, /SEÑOR/);
 assert.strictEqual(peelDoIt("hazme esto").bare, true);

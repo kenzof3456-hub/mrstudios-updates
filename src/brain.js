@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { detectIntent } = require("./intents");
+const { detectIntent, looksLikeHello } = require("./intents");
 const { describeProfile, address } = require("./profile");
 const { formatNow } = require("./time");
 const { openApp, closeApp, isWindows } = require("./windows-apps");
@@ -64,6 +64,19 @@ async function handleTurn({
 }) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
+
+  if (looksLikeHello(text) || looksLikeHello(work)) {
+    const lang = detectLanguage(text, (profile && profile.language) || "es");
+    if (typeof setLanguage === "function") setLanguage(lang);
+    if (profile) profile.language = lang;
+    const who = address(profile);
+    return {
+      reply: lang === "en" ? `Hello, ${who}.` : `Hola, ${who}.`,
+      intent: "hello",
+      language: lang,
+    };
+  }
+
   const lang = detectLanguage(work || text, profile.language || "es");
   if (typeof setLanguage === "function") setLanguage(lang);
   if (profile) profile.language = lang;

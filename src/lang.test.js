@@ -8,6 +8,8 @@ assert.strictEqual(detectLanguage(""), "es");
 assert.strictEqual(detectLanguage("hello"), "en");
 assert.strictEqual(detectLanguage("hola"), "es");
 assert.strictEqual(detectLanguage("hi"), "en");
+assert.strictEqual(detectLanguage("Jarvis hello"), "en");
+assert.strictEqual(detectLanguage("hola Jarvis"), "es");
 assert.strictEqual(localeFor("en"), "en-GB");
 
 const v = ttsVoiceFor({

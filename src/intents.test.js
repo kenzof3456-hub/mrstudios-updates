@@ -7,6 +7,8 @@ const cases = [
   ["hello", "hello"],
   ["hi", "hello"],
   ["Hola Jarvis", "hello"],
+  ["Jarvis hola", "hello"],
+  ["hello Jarvis", "hello"],
   ["¿Qué hora es?", "datetime"],
   ["what time is it", "datetime"],
   ["dime la fecha de hoy", "datetime"],

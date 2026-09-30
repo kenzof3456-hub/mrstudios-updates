@@ -19,11 +19,21 @@ function stripAppFiller(name) {
     .trim();
 }
 
+function looksLikeHello(raw) {
+  const t = normalize(raw);
+  if (!t) return false;
+  const core = t
+    .replace(/\b(oye|hey|ok|okay|eh|buenas|jarvis|senor)\b/g, " ")
+    .replace(/[\s,.:\-!?]+/g, " ")
+    .trim();
+  return /^(hola|hello|hi)$/.test(core);
+}
+
 function detectCore(raw) {
   const t = normalize(raw);
   if (!t) return { type: "empty" };
 
-  if (/^(hola|hello|hi)(\s+(jarvis|senor))?[\s.!?]*$/.test(t)) {
+  if (looksLikeHello(raw)) {
     return { type: "hello" };
   }
 
@@ -200,4 +210,4 @@ function detectIntent(raw) {
   return inner;
 }
 
-module.exports = { detectIntent, detectCore, normalize };
+module.exports = { detectIntent, detectCore, normalize, looksLikeHello };
