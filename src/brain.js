@@ -6,6 +6,8 @@ const { enableDiscordCamera } = require("./discord");
 const { searchWeb, formatSearchAnswer } = require("./search");
 const { chatWithLlm } = require("./llm");
 const { say, aside } = require("./voice");
+const { parseWake } = require("./wake");
+const { pickWakeLine } = require("./spoken");
 
 function systemPrompt(profile, memory) {
   return [
@@ -14,7 +16,7 @@ function systemPrompt(profile, memory) {
     `Español por defecto.`,
     `Personalidad: alegre, cálido, animado, ingenioso.`,
     `Voz EXPRESIVA en texto: líneas cortas, reacción primero (alegría, preocupación, humor, celebración).`,
-    `Nunca plano, nunca robótico, nunca sombrío. Si más adelante hay TTS, usa prosodia expresiva igual.`,
+    `Nunca plano, nunca robótico. TTS con energía (no monótono).`,
     `Sistema: ${profile.os}.`,
     `Memoria de Rabbit:\n${memory.contextBlock()}`,
     `Usa recuerdos cuando ayuden. Cita fuentes web en una línea.`,
@@ -22,7 +24,13 @@ function systemPrompt(profile, memory) {
 }
 
 async function handleTurn({ text, history, profile, llm, memory }) {
-  const intent = detectIntent(text);
+  const parsed = parseWake(text);
+  const work = parsed.woke ? parsed.rest : text;
+  if (parsed.woke && !work) {
+    return { reply: pickWakeLine(), intent: "wake", spokeWake: true };
+  }
+
+  const intent = detectIntent(work);
 
   if (intent.type === "empty") {
     return {

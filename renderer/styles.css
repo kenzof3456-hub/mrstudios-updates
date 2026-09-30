@@ -164,8 +164,9 @@ h1 {
   font-size: 12px;
 }
 
-.chips button:hover {
-  color: var(--cyan);
+.chips button.on {
+  color: var(--bg);
+  background: var(--cyan);
   border-color: var(--cyan);
 }
 

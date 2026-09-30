@@ -6,17 +6,26 @@ Jarvis habla con **Rabbit** (Luis) en español, HUD oscuro estilo J.A.R.V.I.S.
 
 ## Qué hace (v1)
 
-1. Chat de texto.
+1. Chat de texto **y por voz**.
 2. Abre y cierra apps de Windows por nombre (menú Inicio, rutas conocidas, `taskkill`). Confirma en el chat.
 3. Perfil local persistente: Luis / Rabbit / Windows.
 4. **Memoria local** (`userData/memory.json`): si Rabbit cuenta hechos (gustos, apps, Discord, horarios, cómo le gusta que le hablen), Jarvis los guarda y los usa después. «qué sabes de mí» los lista; «olvida X» o «olvida todo» los borra.
 5. Cámara de Discord (mejor esfuerzo): abre Discord si hace falta, enfoca la ventana y envía **Ctrl+Shift+V** (Toggle Camera).
 6. Preguntas generales: busca en la web y responde en español, con fuentes cortas.
 7. Hora, día de la semana y fecha en español, zona horaria local de Windows.
+8. **Voz:** oído siempre (o PTT). Palabra de activación **«Jarvis»** → responde en voz alta al momento (saludo o chiste). Luego ejecuta la orden hablada. TTS expresivo: OpenAI si hay clave, si no **voces de Chromium / SAPI de Windows**.
 
-Tono: alegre y **expresivo** (líneas cortas, reacción, emoción clara). Español. Siempre **Rabbit**. TTS expresivo queda para después; v1 es la voz escrita.
+Tono: alegre y **expresivo** (líneas cortas, reacción, emoción clara). Español. Siempre **Rabbit**. TTS con ritmo un poco más vivo (`rate`/`pitch`); SAPI sube `Rate`.
 
-La voz queda para después.
+## Micrófono (Windows)
+
+1. Configuración de Windows → Privacidad y seguridad → Micrófono → **Permitir que las aplicaciones de escritorio accedan al micrófono**.
+2. Al pulsar **Oído siempre** o **PTT**, Electron pide el mic. Acepta.
+3. STT v1: **Web Speech API** de Chromium (`es-MX`). En algunas builds necesita red. Alternativa PTT si el oído continuo se corta.
+4. Di **«Jarvis»** (o «oye Jarvis…»). Contesta en voz alta. Sigue con la orden: «Jarvis, qué hora es».
+5. TTS: con `OPENAI_API_KEY` usa `/audio/speech` (voz `nova`). Sin clave: `speechSynthesis` (voces en español del sistema) y, en Windows, **System.Speech** (SAPI).
+
+Oído continuo puede oír al propio TTS; Jarvis pausa el reconocimiento mientras habla.
 
 ## Límite de la cámara de Discord
 
@@ -39,7 +48,7 @@ npm install
 npm start
 ```
 
-Sin `OPENAI_API_KEY` Jarvis sigue resolviendo hora, perfil, abrir/cerrar apps, Discord y búsqueda web.
+Sin `OPENAI_API_KEY` Jarvis sigue con hora, perfil, apps, Discord, búsqueda, memoria y **TTS local**.
 
 ## Cómo generar el instalador
 
@@ -54,9 +63,11 @@ El setup queda en `dist/Jarvis-Setup-1.0.0.exe`.
 
 Ver `.env.example`:
 
-- `OPENAI_API_KEY` — opcional, API compatible con OpenAI
+- `OPENAI_API_KEY` — opcional, chat LLM + TTS cloud
 - `OPENAI_BASE_URL` — por defecto `https://api.openai.com/v1`
 - `OPENAI_MODEL` — por defecto `gpt-4o-mini`
+- `OPENAI_TTS_MODEL` — por defecto `tts-1`
+- `OPENAI_TTS_VOICE` — por defecto `nova`
 
 ## Tests locales (también en Linux CI)
 
