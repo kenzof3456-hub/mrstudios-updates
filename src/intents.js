@@ -61,6 +61,14 @@ function detectIntent(raw) {
   if (send) return send;
 
   if (
+    /(mira esto|mira esta foto|mira esta imagen|mira este archivo|mira el archivo|esta foto|este adjunto)/.test(
+      t
+    )
+  ) {
+    return { type: "look_attach", query: String(raw).trim() };
+  }
+
+  if (
     /(mira|ve|ver|echa un vistazo|captura|screenshot|fotografia).{0,50}(pantalla|screen|monitor|escritorio)|mira mi pantalla|look at (my )?(screen|display)/.test(
       t
     )

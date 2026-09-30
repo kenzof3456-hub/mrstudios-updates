@@ -1,7 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen, dialog, nativeImage } = require("electron");
 const { loadProfile } = require("./src/profile");
 const { createMemory } = require("./src/memory");
 const { createMessenger } = require("./src/messenger");
@@ -106,10 +106,63 @@ app.whenReady().then(() => {
     greeting: greeting(profile, memory),
   }));
 
+  ipcMain.handle("jarvis:pick-file", async () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    const picked = await dialog.showOpenDialog(win || undefined, {
+      title: "Adjuntar para Jarvis",
+      properties: ["openFile"],
+      filters: [
+        {
+          name: "Fotos y documentos",
+          extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "txt", "md", "csv", "json", "log"],
+        },
+        { name: "Imágenes", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] },
+        { name: "Todos", extensions: ["*"] },
+      ],
+    });
+    if (picked.canceled || !picked.filePaths[0]) {
+      return { ok: false, cancelled: true };
+    }
+    try {
+      const ingested = sight.ingestPath(picked.filePaths[0]);
+      let preview = "";
+      if (ingested.kind === "image") {
+        try {
+          const img = nativeImage.createFromPath(ingested.path);
+          if (!img.isEmpty()) preview = img.resize({ width: 128 }).toDataURL();
+        } catch {
+          preview = ingested.dataUrl && ingested.dataUrl.length < 280000 ? ingested.dataUrl : "";
+        }
+      }
+      return {
+        ok: true,
+        name: ingested.name,
+        kind: ingested.kind,
+        preview,
+      };
+    } catch (err) {
+      const code = String(err.message || err);
+      const detail =
+        code === "too-large"
+          ? "Ese archivo pesa de más (máx. 12 MB)."
+          : "No pude copiar el archivo.";
+      return { ok: false, error: detail };
+    }
+  });
+
   ipcMain.handle("jarvis:chat", async (_evt, payload) => {
     const text = String(payload?.text || "");
     const history = Array.isArray(payload?.history) ? payload.history : [];
-    return handleTurn({ text, history, profile, llm, memory, sight, messenger });
+    return handleTurn({
+      text,
+      history,
+      profile,
+      llm,
+      memory,
+      sight,
+      messenger,
+      useAttach: Boolean(payload?.useAttach),
+    });
   });
 
   ipcMain.handle("jarvis:wake-line", () => pickWakeLine());

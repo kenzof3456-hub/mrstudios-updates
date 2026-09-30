@@ -23,10 +23,17 @@
 
     <aside id="log" class="log" aria-live="polite"></aside>
 
+    <div id="attach-preview" class="attach-preview" hidden>
+      <img id="attach-thumb" alt="" />
+      <span id="attach-label"></span>
+      <button type="button" id="attach-clear" class="ghost-btn" title="Quitar">×</button>
+    </div>
+
     <footer class="bar">
       <button type="button" id="mic-always" class="ghost-btn">Oído</button>
       <button type="button" id="mic-ptt" class="ghost-btn">PTT</button>
       <form id="form" class="composer">
+        <button type="button" id="attach" class="ghost-btn attach-btn">Adjuntar</button>
         <input
           id="input"
           type="text"
@@ -44,6 +51,7 @@
           <button type="button" data-q="¿Qué sabes de mí?">Memoria</button>
           <button type="button" data-q="mira mi pantalla">Mira pantalla</button>
           <button type="button" data-q="manda un mensaje a mamá por WhatsApp que ya voy">Mensaje</button>
+          <button type="button" data-q="mira esto">Mira esto</button>
           <button type="button" data-q="qué es esto">Qué es esto</button>
           <button type="button" data-q="Enciende la cámara de Discord">Discord</button>
         </div>

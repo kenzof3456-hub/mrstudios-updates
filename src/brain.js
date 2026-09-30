@@ -23,7 +23,16 @@ function systemPrompt(profile, memory) {
   ].join(" ");
 }
 
-async function handleTurn({ text, history, profile, llm, memory, sight, messenger }) {
+async function handleTurn({
+  text,
+  history,
+  profile,
+  llm,
+  memory,
+  sight,
+  messenger,
+  useAttach,
+}) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
   if (parsed.woke && !work) {
@@ -36,6 +45,21 @@ async function handleTurn({ text, history, profile, llm, memory, sight, messenge
     const sendReply = await messenger.handleTurnText(work, intent);
     if (sendReply) {
       return { reply: sendReply, intent: "send_message" };
+    }
+  }
+
+  if (useAttach && sight) {
+    if (
+      intent.type === "empty" ||
+      intent.type === "look_attach" ||
+      intent.type === "screen_ask" ||
+      intent.type === "look_ask" ||
+      intent.type === "question"
+    ) {
+      return {
+        reply: await sight.lookAttached(work || "mira esto"),
+        intent: "look_attach",
+      };
     }
   }
 
@@ -164,6 +188,13 @@ async function handleTurn({ text, history, profile, llm, memory, sight, messenge
     };
   }
 
+  if (intent.type === "look_attach") {
+    if (!sight) {
+      return { reply: say("Aún no tengo ojos, Rabbit."), intent: intent.type };
+    }
+    return { reply: await sight.lookAttached(intent.query), intent: intent.type };
+  }
+
   if (intent.type === "look_screen") {
     if (!sight) {
       return { reply: say("Aún no tengo ojos, Rabbit."), intent: intent.type };
@@ -178,9 +209,17 @@ async function handleTurn({ text, history, profile, llm, memory, sight, messenge
     if (intent.type === "screen_ask" && !sight.has()) {
       return {
         reply: say(
-          "Aún no he mirado tu pantalla, Rabbit.",
-          "Dime «mira mi pantalla» primero. Nunca miro sin que me lo pidas."
+          "Aún no he mirado nada, Rabbit.",
+          "Dime «mira mi pantalla» o pulsa Adjuntar y luego «mira esto».",
+          "Nunca miro el monitor si tú no me lo pides."
         ),
+        intent: intent.type,
+      };
+    }
+    const last = sight.getLast && sight.getLast();
+    if (last && last.kind !== "image") {
+      return {
+        reply: await sight.lookAttached(intent.query),
         intent: intent.type,
       };
     }
@@ -238,6 +277,7 @@ function greeting(profile, memory) {
     "Qué alegría verte.",
     `Son las ${time}. Hoy es ${weekday}, ${date} (${timeZone}).`,
     "Mensajes: «manda a mamá por WhatsApp que ya voy». Si no dices app, miro la memoria o te pregunto una vez.",
+    "Fotos y archivos: pulsa Adjuntar. Quedan en el PC; visión solo con tu API.",
     win,
     wink
   );

@@ -2,6 +2,11 @@ const logEl = document.getElementById("log");
 const form = document.getElementById("form");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
+const attachBtn = document.getElementById("attach");
+const attachPreview = document.getElementById("attach-preview");
+const attachThumb = document.getElementById("attach-thumb");
+const attachLabel = document.getElementById("attach-label");
+const attachClear = document.getElementById("attach-clear");
 const pill = document.getElementById("status-pill");
 const ear = document.getElementById("ear");
 const alwaysBtn = document.getElementById("mic-always");
@@ -13,6 +18,30 @@ let speaking = false;
 let awaitCommand = false;
 let voiceMode = "off";
 let listener = null;
+let pendingAttach = null;
+
+function showAttach(info) {
+  pendingAttach = info;
+  attachPreview.hidden = false;
+  attachLabel.textContent =
+    info.kind === "image" ? "Foto lista: " + info.name : "Archivo: " + info.name;
+  if (info.preview) {
+    attachThumb.src = info.preview;
+    attachThumb.classList.add("show");
+  } else {
+    attachThumb.removeAttribute("src");
+    attachThumb.classList.remove("show");
+  }
+  input.placeholder = "«mira esto» o pregunta sobre el archivo…";
+}
+
+function hideAttach() {
+  pendingAttach = null;
+  attachPreview.hidden = true;
+  attachThumb.removeAttribute("src");
+  attachThumb.classList.remove("show");
+  input.placeholder = "«Jarvis» o escribe…";
+}
 
 function mode() {
   if (speaking) return "speak";
@@ -53,17 +82,21 @@ async function talk(text) {
 }
 
 async function send(text) {
-  const trimmed = text.trim();
-  if (!trimmed) return;
-  addMsg("user", trimmed);
-  history.push({ role: "user", content: trimmed });
+  const trimmed = (text || "").trim();
+  const withFile = Boolean(pendingAttach);
+  if (!trimmed && !withFile) return;
+  const spoken = trimmed || "mira esto";
+  addMsg("user", withFile ? spoken + "  ·  " + pendingAttach.name : spoken);
+  history.push({ role: "user", content: spoken });
   input.value = "";
   sendBtn.disabled = true;
+  const useAttach = withFile;
   try {
-    const res = await window.jarvis.chat(trimmed, history.slice(0, -1));
+    const res = await window.jarvis.chat(spoken, history.slice(0, -1), { useAttach });
     const reply = res.reply || "Sin respuesta.";
     addMsg("jarvis", reply);
     history.push({ role: "assistant", content: reply });
+    if (useAttach) hideAttach();
     await talk(reply);
   } catch (err) {
     const msg = "Fallo de enlace, Rabbit: " + err.message;
@@ -150,6 +183,23 @@ form.addEventListener("submit", (e) => {
   e.preventDefault();
   send(input.value);
 });
+
+attachBtn.addEventListener("click", async () => {
+  try {
+    const picked = await window.jarvis.pickFile();
+    if (!picked || picked.cancelled) return;
+    if (!picked.ok) {
+      addMsg("jarvis", picked.error || "No pude adjuntar eso, Rabbit.");
+      return;
+    }
+    showAttach(picked);
+    addMsg("jarvis", "Adjunto listo: «" + picked.name + "». Envía vacío o di «mira esto».");
+  } catch (err) {
+    addMsg("jarvis", "No pude abrir el archivo: " + err.message);
+  }
+});
+
+attachClear.addEventListener("click", () => hideAttach());
 
 for (const btn of document.querySelectorAll(".chips button[data-q]")) {
   btn.addEventListener("click", () => send(btn.dataset.q));

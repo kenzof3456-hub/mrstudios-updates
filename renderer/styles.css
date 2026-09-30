@@ -73,7 +73,7 @@ body {
   position: fixed;
   right: 16px;
   top: 48px;
-  bottom: 88px;
+  bottom: 110px;
   width: min(280px, 28vw);
   z-index: 2;
   overflow: auto;
@@ -123,6 +123,49 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.attach-preview {
+  position: fixed;
+  left: 16px;
+  bottom: 62px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+  background: rgba(4, 10, 18, 0.92);
+  border: 1px solid rgba(78, 203, 255, 0.28);
+  max-width: min(420px, 70vw);
+}
+
+.attach-preview[hidden] {
+  display: none;
+}
+
+#attach-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  background: #0a1520;
+  display: none;
+}
+
+#attach-thumb.show {
+  display: block;
+}
+
+#attach-label {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-btn {
+  color: var(--cyan);
+  flex-shrink: 0;
 }
 
 .ghost-btn,

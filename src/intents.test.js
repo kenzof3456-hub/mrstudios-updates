@@ -16,6 +16,8 @@ const cases = [
   ["olvida el café", "forget"],
   ["olvida todo", "forget_all"],
   ["mira mi pantalla", "look_screen"],
+  ["mira esto", "look_attach"],
+  ["mira esta foto", "look_attach"],
   ["mira la pantalla y busca quién es", "look_ask"],
   ["qué es esto", "screen_ask"],
   ["manda un mensaje a mamá por WhatsApp que ya voy", "send_message"],
