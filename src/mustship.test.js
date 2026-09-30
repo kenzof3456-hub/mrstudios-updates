@@ -42,7 +42,10 @@ assert.match(orb, /dir: 1/);
 assert.match(orb, /dir: -1/);
 assert.match(orb, /state === "speak"/);
 assert.match(orb, /rotSpeed = 0\.16/);
-assert.match(orb, /k < 6/);
+assert.match(orb, /drawOrganicRing/);
+assert.match(orb, /freqTarget/);
+assert.match(orb, /getByteFrequencyData|born/);
+assert.doesNotMatch(orb, /k < 6/);
 assert.doesNotMatch(orb, /rgba\(255,\s*1[89]\d,\s*\d+/);
 
 assert.match(html, /id="voice-pick"/);

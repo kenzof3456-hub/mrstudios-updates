@@ -58,19 +58,29 @@ function monitorElement(audio, onLevel) {
     const ctx = new AudioContext();
     const src = ctx.createMediaElementSource(audio);
     const an = ctx.createAnalyser();
-    an.fftSize = 256;
+    an.fftSize = 512;
     src.connect(an);
     an.connect(ctx.destination);
-    const data = new Uint8Array(an.fftSize);
+    const time = new Uint8Array(an.fftSize);
+    const spec = new Uint8Array(an.frequencyBinCount);
     let raf = 0;
     const loop = () => {
-      an.getByteTimeDomainData(data);
+      an.getByteTimeDomainData(time);
+      an.getByteFrequencyData(spec);
       let sum = 0;
-      for (let i = 0; i < data.length; i++) {
-        const v = (data[i] - 128) / 128;
+      for (let i = 0; i < time.length; i++) {
+        const v = (time[i] - 128) / 128;
         sum += v * v;
       }
-      onLevel(Math.min(1, Math.sqrt(sum / data.length) * 4));
+      const amp = Math.min(1, Math.sqrt(sum / time.length) * 4);
+      let mag = 0;
+      let wsum = 0;
+      for (let i = 1; i < spec.length; i++) {
+        mag += spec[i];
+        wsum += spec[i] * i;
+      }
+      const freq = mag > 8 ? Math.min(1, wsum / mag / (spec.length * 0.45)) : 0.35;
+      onLevel(amp, freq);
       raf = requestAnimationFrame(loop);
     };
     loop();
@@ -86,19 +96,23 @@ function monitorElement(audio, onLevel) {
 function fakeEnvelope(text, onLevel) {
   if (!onLevel) return () => {};
   const start = Date.now();
-  const dur = Math.min(12000, 700 + flatten(text).length * 55);
+  const spoken = flatten(text);
+  const dur = Math.min(12000, 700 + spoken.length * 55);
   let raf = 0;
   const loop = () => {
     const p = Math.min(1, (Date.now() - start) / dur);
     const env = Math.sin(p * Math.PI);
-    const wobble = 0.45 + 0.55 * Math.abs(Math.sin(Date.now() / 70));
-    onLevel(env * wobble);
+    const now = Date.now();
+    const syllable = 0.35 + 0.65 * Math.abs(Math.sin(now / 85));
+    const amp = env * syllable;
+    const freq = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(now / (90 + 40 * Math.sin(now / 310))));
+    onLevel(amp, freq);
     raf = requestAnimationFrame(loop);
   };
   loop();
   return () => {
     cancelAnimationFrame(raf);
-    onLevel(0);
+    onLevel(0, 0);
   };
 }
 

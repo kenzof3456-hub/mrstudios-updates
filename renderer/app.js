@@ -74,7 +74,7 @@ async function talk(text) {
   applyOrb();
   try {
     if (listener && voiceMode === "always") listener.stop();
-    await window.speakOut(text, (lvl) => window.orbSetLevel && window.orbSetLevel(lvl));
+    await window.speakOut(text, (amp, freq) => window.orbSetLevel && window.orbSetLevel(amp, freq));
   } finally {
     speaking = false;
     if (voiceMode === "always" && listener) listener.startAlways();

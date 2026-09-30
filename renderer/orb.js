@@ -4,6 +4,10 @@
   let state = "idle";
   let level = 0;
   let target = 0;
+  let freq = 0.4;
+  let freqTarget = 0.4;
+  let lastAmp = 0;
+  let lastSpawn = 0;
   let t0 = performance.now();
   let dpr = 1;
 
@@ -57,8 +61,11 @@
     }
   }
 
-  function setLevel(n) {
+  function setLevel(n, f) {
     target = Math.max(0, Math.min(1, n));
+    if (typeof f === "number" && !Number.isNaN(f)) {
+      freqTarget = Math.max(0, Math.min(1, f));
+    }
   }
 
   function rotX(p, a) {
@@ -91,6 +98,26 @@
     return { x: cx + p.x * f, y: cy + p.y * f, z: p.z, a: Math.max(0.08, (p.z + 1.15) / 2.2) };
   }
 
+  function drawOrganicRing(cx, cy, rx, ry, rot, wobble, seed, stroke, width) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    const n = 80;
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2 + rot;
+      const w =
+        1 +
+        wobble * 0.045 * Math.sin(a * 3 + seed) +
+        wobble * 0.03 * Math.sin(a * 7 - seed * 1.7);
+      const x = cx + Math.cos(a) * rx * w;
+      const y = cy + Math.sin(a) * ry * w;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
   function drawPolyline(pts, stroke, width) {
     if (pts.length < 2) return;
     ctx.strokeStyle = stroke;
@@ -110,6 +137,7 @@
     t0 = now;
     const t = now / 1000;
     level += (target - level) * Math.min(1, dt / 90);
+    freq += (freqTarget - freq) * Math.min(1, dt / 120);
 
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "#03060c";
@@ -140,14 +168,25 @@
         ripples.push({ t: now, dir: -1, seed: Math.random() });
       }
     } else {
-      rotSpeed = 0.55 + level * 0.85;
-      sparkAmt = 0.7 + level * 0.5;
-      wave = 0.9 + Math.max(0.5, level) * 1.6;
-      target = Math.max(target, 0.55);
-      const amp = Math.max(0.55, level);
-      if (ripples.length < 14 && Math.random() < 0.28 + amp * 0.55) {
-        ripples.push({ t: now, dir: 1, seed: Math.random() });
+      rotSpeed = 0.22 + level * 0.55;
+      sparkAmt = 0.35 + level * 0.7;
+      wave = level;
+      const rising = level > lastAmp + 0.03;
+      const cool = 70 + (1 - level) * 90;
+      if (level > 0.06 && rising && now - lastSpawn > cool && ripples.length < 10) {
+        lastSpawn = now;
+        const shells = level > 0.62 ? 3 : level > 0.32 ? 2 : 1;
+        for (let s = 0; s < shells; s++) {
+          ripples.push({
+            t: now + s * (55 + (1 - freq) * 40),
+            dir: 1,
+            seed: Math.random() * 8,
+            born: level,
+            hz: freq,
+          });
+        }
       }
+      lastAmp = level;
     }
 
     const yaw = t * rotSpeed;
@@ -185,44 +224,57 @@
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
-    const amp = Math.max(state === "speak" ? 0.45 : 0, level);
+    const amp = state === "speak" ? level : 0;
     for (let i = ripples.length - 1; i >= 0; i--) {
       const rp = ripples[i];
-      const age = (now - rp.t) / (rp.dir > 0 ? 1100 : 900);
+      if (now < rp.t) continue;
+      const life = rp.dir > 0 ? 1300 : 900;
+      const age = (now - rp.t) / life;
       if (age >= 1) {
         ripples.splice(i, 1);
         continue;
       }
       const grow = rp.dir > 0 ? age : 1 - age;
-      const rad = baseR * (0.16 + grow * (1.85 + amp * 0.7));
-      const alpha = (1 - age) * (rp.dir > 0 ? 0.85 + amp * 0.55 : 0.5);
-      ctx.strokeStyle = `rgba(70, 220, 255, ${alpha})`;
-      ctx.lineWidth = rp.dir > 0 ? 4.2 + amp * 5.2 : 2.2;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rad, rad * 0.92, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = `rgba(200, 250, 255, ${alpha * 0.55})`;
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rad * 0.92, rad * 0.84, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    if (state === "speak") {
-      for (let k = 0; k < 6; k++) {
-        const phase = (t * (1.35 + amp * 1.8) + k / 6) % 1;
-        const rad = baseR * (0.16 + phase * (1.9 + amp * 0.65));
-        const alpha = (1 - phase) * (0.62 + amp * 0.85);
-        ctx.strokeStyle = `rgba(70, 230, 255, ${alpha})`;
-        ctx.lineWidth = 3.8 + amp * 5.5;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, rad, rad * 0.88, Math.sin(t * 0.6 + k) * 0.1, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = `rgba(210, 252, 255, ${alpha * 0.5})`;
-        ctx.lineWidth = 1.35;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, rad * 0.97, rad * 0.84, Math.sin(t * 0.6 + k) * 0.1, 0, Math.PI * 2);
-        ctx.stroke();
+      const born = rp.born != null ? rp.born : amp;
+      const reach = rp.dir > 0 ? 0.55 + born * 1.05 : 1.35;
+      const rad = baseR * (0.18 + grow * reach);
+      const fade = 1 - age;
+      const alpha = fade * (rp.dir > 0 ? 0.22 + born * 0.45 : 0.4);
+      const thin = rp.dir > 0 ? 0.55 + born * 1.35 : 1.6;
+      drawOrganicRing(
+        cx,
+        cy,
+        rad,
+        rad * 0.9,
+        (rp.hz || 0) * age * 0.4,
+        0.8 + (rp.hz || 0.4),
+        rp.seed || 1,
+        `rgba(120, 230, 255, ${alpha})`,
+        thin
+      );
+      if (rp.dir > 0 && born > 0.25) {
+        drawOrganicRing(
+          cx,
+          cy,
+          rad * 0.98,
+          rad * 0.88,
+          0,
+          0.6,
+          rp.seed + 2,
+          `rgba(210, 250, 255, ${alpha * 0.35})`,
+          0.45
+        );
+      }
+      if (rp.dir > 0 && born > 0.5 && age < 0.45) {
+        const dust = 10 + Math.floor(born * 18);
+        for (let d = 0; d < dust; d++) {
+          const a = (d / dust) * Math.PI * 2 + rp.seed;
+          const jitter = 0.92 + ((d * 17) % 9) * 0.012;
+          ctx.fillStyle = `rgba(180, 240, 255, ${fade * 0.18 * born})`;
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(a) * rad * jitter, cy + Math.sin(a) * rad * 0.9 * jitter, 0.8 + born, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
 
@@ -245,16 +297,14 @@
       for (let i = 0; i <= n; i++) {
         const phi = (i / n) * Math.PI;
         const bump =
-          state === "speak"
-            ? 1 + amp * 0.26 * Math.sin(phi * 7 - t * 14 + m * 0.4)
-            : ringTight;
+          state === "speak" ? 1 + amp * 0.1 * Math.sin(phi * 5 - t * (6 + freq * 8) + m * 0.3) : ringTight;
         const pr = xf(sph(theta, phi, bump));
         pts.push(pr);
-        if (state === "speak" && i > 0) {
-          const pulse = 0.5 + 0.5 * Math.sin(phi * 9 - t * 16 + m);
-          if (pulse > 0.42) {
-            ctx.strokeStyle = `rgba(150, 240, 255, ${0.4 * pulse * wave * pr.a})`;
-            ctx.lineWidth = 3.4 * pulse * (0.75 + amp);
+        if (state === "speak" && amp > 0.2 && i > 0) {
+          const pulse = 0.5 + 0.5 * Math.sin(phi * 6 - t * (8 + freq * 10) + m);
+          if (pulse > 0.72) {
+            ctx.strokeStyle = `rgba(160, 240, 255, ${0.18 * pulse * amp * pr.a})`;
+            ctx.lineWidth = 1.2 * pulse * (0.5 + amp);
             ctx.beginPath();
             ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
             ctx.lineTo(pr.x, pr.y);
