@@ -104,6 +104,31 @@ assert.match(systemPrompt(profile, memory, "es"), /Think, then act/);
   assert.strictEqual(likes.searched, false);
   assert.match(likes.reply, /café|Señor/i);
 
+  const chatter = {
+    apiKey: "test",
+    chat: async ({ json, messages }) => {
+      if (json) return JSON.stringify({ action: "chat", query: "y eso qué opinas", need_web: false });
+      const blob = JSON.stringify(messages);
+      assert.match(blob, /peli/);
+      assert.match(blob, /opinas/);
+      return "Si te enganchó, Señor, merece una segunda. ¿De qué iba?";
+    },
+  };
+  const chat = await handleTurn({
+    text: "y eso qué opinas",
+    history: [
+      { role: "user", content: "ayer vi una peli rara" },
+      { role: "assistant", content: "¿Cuál, Señor?" },
+    ],
+    profile,
+    llm: chatter,
+    memory,
+    craftDir,
+  });
+  assert.strictEqual(chat.intent, "question");
+  assert.strictEqual(chat.searched, false);
+  assert.match(chat.reply, /Señor/);
+
   console.log("brain llm ok");
 })().catch((e) => {
   console.error(e);

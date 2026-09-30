@@ -10,8 +10,13 @@ assert.strictEqual(intentFromPlan({ action: "tv", query: "Japón" }, "").type, "
 assert.strictEqual(intentFromPlan({ action: "answer", query: "café", need_web: false }, "").need_web, false);
 
 const omitted = parsePlan('{"action":"answer","query":"quién es X"}');
-assert.strictEqual(omitted.need_web, true);
-assert.strictEqual(intentFromPlan(omitted, "quién es X").need_web, true);
+assert.strictEqual(omitted.need_web, false);
+assert.strictEqual(intentFromPlan(omitted, "quién es X").need_web, false);
+
+const chat = parsePlan('{"action":"chat","query":"me aburro"}');
+assert.strictEqual(chat.action, "chat");
+assert.strictEqual(chat.need_web, false);
+assert.strictEqual(intentFromPlan(chat, "me aburro").need_web, false);
 
 const searchAct = parsePlan('{"action":"search","query":"docs electron"}');
 assert.strictEqual(searchAct.need_web, true);

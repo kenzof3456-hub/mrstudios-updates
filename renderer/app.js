@@ -13,6 +13,10 @@ const alwaysBtn = document.getElementById("mic-always");
 const pttBtn = document.getElementById("mic-ptt");
 const caption = document.getElementById("caption");
 const voicePick = document.getElementById("voice-pick");
+const micHint = document.getElementById("mic-hint");
+const micHintTitle = document.getElementById("mic-hint-title");
+const micHintBody = document.getElementById("mic-hint-body");
+const micHintRetry = document.getElementById("mic-hint-retry");
 
 const history = [];
 let speaking = false;
@@ -22,6 +26,9 @@ let listener = null;
 let pendingAttach = null;
 let onlineLabel = "EN LÍNEA";
 let retrySpeak = "";
+let earWanted = true;
+let earBusy = false;
+let skipEarToggle = 0;
 
 function showAttach(info) {
   pendingAttach = info;
@@ -48,8 +55,19 @@ function hideAttach() {
 
 function mode() {
   if (speaking) return "speak";
-  if (awaitCommand || voiceMode === "ptt") return "listen";
+  if (awaitCommand || voiceMode === "ptt" || voiceMode === "always") return "listen";
   return "idle";
+}
+
+function showMicHint(title, body) {
+  if (!micHint) return;
+  if (micHintTitle) micHintTitle.textContent = title;
+  if (micHintBody) micHintBody.textContent = body;
+  micHint.hidden = false;
+}
+
+function hideMicHint() {
+  if (micHint) micHint.hidden = true;
 }
 
 function applyOrb() {
@@ -103,6 +121,7 @@ async function talk(text) {
 
 async function onUserUnlock() {
   if (window.unlockAudio) await window.unlockAudio();
+  if (earWanted) await enableEar();
   if (retrySpeak && !speaking) {
     const line = retrySpeak;
     retrySpeak = "";
@@ -170,7 +189,7 @@ async function onHeard(finalText) {
     }
     return;
   }
-  if (awaitCommand || voiceMode === "ptt") {
+  if (awaitCommand || voiceMode === "ptt" || voiceMode === "always") {
     awaitCommand = false;
     applyOrb();
     await send(finalText);
@@ -180,20 +199,87 @@ async function onHeard(finalText) {
 window.__jarvisHeard = onHeard;
 
 function onListenError(err) {
-  if (ear) ear.textContent = "MIC " + err;
+  const why = String(err || "stt");
+  if (ear) ear.textContent = "MIC " + why;
+  if (why === "not-allowed" || why === "service-not-allowed") {
+    showMicHint(
+      "Windows bloqueó el micrófono",
+      "Configuración → Privacidad y seguridad → Micrófono → permitir apps de escritorio. Luego Reintentar."
+    );
+  } else if (why !== "no-speech") {
+    showMicHint(
+      "Jarvis no está oyendo",
+      "Fallo del oído: " + why + ". Pulsa Reintentar. Mientras tanto, escribe."
+    );
+  }
 }
 
 async function armMic() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showMicHint(
+      "Este PC no da micrófono",
+      "No hay getUserMedia. Escribe abajo; el teclado sigue."
+    );
+    addMsg("jarvis", "no pude oír: este motor no pide micrófono. Escribe, Señor.");
+    return false;
+  }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach((t) => t.stop());
+    hideMicHint();
     return true;
   } catch (err) {
-    addMsg(
-      "jarvis",
-      "¡Ojo, Señor! No hay micrófono. En Windows: Privacidad → Micrófono → apps de escritorio."
-    );
+    const name = (err && err.name) || "";
+    const msg = (err && err.message) || String(err);
+    if (name === "NotAllowedError" || name === "PermissionDeniedError" || /denied|notallowed/i.test(msg)) {
+      showMicHint(
+        "Windows bloqueó el micrófono",
+        "Configuración → Privacidad y seguridad → Micrófono → Permitir que las aplicaciones de escritorio accedan al micrófono. Acepta el aviso de Jarvis y pulsa Reintentar."
+      );
+      addMsg("jarvis", "no pude oír: permiso denegado. " + msg);
+    } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+      showMicHint(
+        "No hay micrófono en este PC",
+        "En esta máquina no hay micro (o no está enchufado). Escribe abajo; el chat sigue."
+      );
+      addMsg("jarvis", "no pude oír: no hay micrófono. Escribe, Señor.");
+    } else {
+      showMicHint("Jarvis no está oyendo", "No pude abrir el micrófono: " + msg + ". Escribe abajo o Reintentar.");
+      addMsg("jarvis", "no pude oír: " + msg);
+    }
     return false;
+  }
+}
+
+async function enableEar() {
+  if (voiceMode === "always" && listener) return true;
+  if (earBusy) return voiceMode === "always";
+  earBusy = true;
+  skipEarToggle = Date.now() + 500;
+  try {
+    if (!listener) {
+      showMicHint(
+        "No hay reconocimiento de voz",
+        "Este Chromium no trae SpeechRecognition. Escribe abajo; el teclado sigue."
+      );
+      if (ear) ear.textContent = "SIN STT";
+      return false;
+    }
+    if (!(await armMic())) {
+      alwaysBtn.classList.remove("on");
+      voiceMode = "off";
+      applyOrb();
+      return false;
+    }
+    voiceMode = "always";
+    alwaysBtn.classList.add("on");
+    alwaysBtn.disabled = false;
+    listener.startAlways();
+    skipEarToggle = Date.now() + 500;
+    applyOrb();
+    return true;
+  } finally {
+    earBusy = false;
   }
 }
 
@@ -256,16 +342,17 @@ async function boot() {
   }
 
   if (!window.speechSupported || !window.speechSupported()) {
-    ear.textContent = "SIN STT";
-    alwaysBtn.disabled = true;
-    pttBtn.disabled = true;
-    return;
+    if (ear) ear.textContent = "SIN STT";
+    showMicHint(
+      "No hay reconocimiento de voz",
+      "Este Chromium no trae SpeechRecognition. Escribe abajo; el teclado sigue."
+    );
+  } else {
+    listener = window.createListener({
+      onFinal: onHeard,
+      onError: onListenError,
+    });
   }
-
-  listener = window.createListener({
-    onFinal: onHeard,
-    onError: onListenError,
-  });
 }
 
 form.addEventListener("submit", (e) => {
@@ -311,18 +398,26 @@ for (const btn of document.querySelectorAll(".chips button[data-q]")) {
 }
 
 alwaysBtn.addEventListener("click", async () => {
+  if (Date.now() < skipEarToggle) return;
   if (voiceMode === "always") {
+    earWanted = false;
     voiceMode = "off";
     listener && listener.stop();
     alwaysBtn.classList.remove("on");
     applyOrb();
     return;
   }
-  if (!(await armMic())) return;
-  voiceMode = "always";
-  alwaysBtn.classList.add("on");
-  listener.startAlways();
+  earWanted = true;
+  await enableEar();
 });
+
+if (micHintRetry) {
+  micHintRetry.addEventListener("click", async () => {
+    earWanted = true;
+    hideMicHint();
+    await enableEar();
+  });
+}
 
 pttBtn.addEventListener("mousedown", async (e) => {
   e.preventDefault();

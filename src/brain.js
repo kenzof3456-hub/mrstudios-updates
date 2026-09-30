@@ -40,7 +40,8 @@ function systemPrompt(profile, memory, lang) {
     `Always address him as ${who}. Never any other nickname. Use Luis only if he asks his real name.`,
     `Reply in ${langName}. Match his language exactly.`,
     `Tone: lively, not extra. Warm, composed, a spark of wit when it earns its place — never a joke every line, never a canned status dump.`,
-    `Think, then act. You have tools: web search, legal TV listings, screen/attach vision, local files in craft, Windows apps, send-message, memory.`,
+    `Chat is the default. Have a normal conversation: small talk, follow-ups, opinions, remember the last turns. Do not treat every line as a command or an intent.`,
+    `Think, then act. Use tools (web search, legal TV, screen/attach, craft files, Windows apps, send-message, memory, clock) only when this turn needs them.`,
     `When he asks to make code, mods, or 3D, write files to disk (original work only). When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
     `Use his memory when it helps. If you do not know, search the web thoroughly (several pages), combine them, and cite 2–5 short URLs. Legal TV only — no pirate streams. Refuse OS wipes. Ask once before deleting files or installing unknowns.`,
     `${who}'s memory:\n${memory.contextBlock()}`,
@@ -88,7 +89,7 @@ async function maybePlan(llm, intent, work, ctx) {
           `Hint: ${intent.type}\n` +
           `Memory:\n${ctx.memory.contextBlock()}\n` +
           `Recent:\n${(ctx.history || [])
-            .slice(-4)
+            .slice(-12)
             .map((m) => `${m.role}: ${m.content}`)
             .join("\n")}\n` +
           `${address(ctx.profile)}: ${work}`,
@@ -96,16 +97,22 @@ async function maybePlan(llm, intent, work, ctx) {
     ],
   });
   const plan = parsePlan(raw);
-  if (!plan) return intent;
+  if (!plan) {
+    if (intent.type === "question") {
+      return { type: "question", query: intent.query || work, need_web: false };
+    }
+    return intent;
+  }
   return intentFromPlan(plan, intent.query || work);
 }
 
-async function speakThought(llm, profile, memory, lang, brief, facts) {
+async function speakThought(llm, profile, memory, lang, brief, facts, history) {
   if (!hasThinker(llm)) return null;
   const text = await think(llm, {
     timeout: 20000,
     messages: [
       { role: "system", content: systemPrompt(profile, memory, lang) },
+      ...(history || []).slice(-12),
       {
         role: "user",
         content:
@@ -321,7 +328,8 @@ async function handleTurn({
       memory,
       lang,
       tx(lang, "Acaba de pedirte que lo recuerdes.", "He just asked you to remember this."),
-      fact.text
+      fact.text,
+      history
     );
     return {
       reply: llmText || canned,
@@ -345,7 +353,8 @@ async function handleTurn({
       memory,
       lang,
       tx(lang, "Preguntó qué recuerdas de él.", "He asked what you remember about him."),
-      canned
+      canned,
+      history
     );
     return {
       reply: llmText || canned,
@@ -399,7 +408,8 @@ async function handleTurn({
       memory,
       lang,
       tx(lang, "Preguntó la hora o la fecha.", "He asked the time or date."),
-      canned
+      canned,
+      history
     );
     return {
       reply: llmText || canned,
@@ -420,7 +430,8 @@ async function handleTurn({
       memory,
       lang,
       tx(lang, "Preguntó quién es.", "He asked who he is."),
-      canned
+      canned,
+      history
     );
     return {
       reply: llmText || canned,
@@ -607,7 +618,7 @@ async function handleTurn({
   }
 
   const q = intent.query || work;
-  const useWeb = intent.need_web !== false;
+  const useWeb = hasThinker(llm) ? intent.need_web === true : intent.need_web !== false;
   const results = useWeb ? await searchWeb(q) : [];
   const memBits = aside(memory, q, lang);
   const fallback = useWeb
@@ -616,23 +627,24 @@ async function handleTurn({
         memBits ||
           tx(
             lang,
-            "Con lo que me has contado no me alcanza. Pregúntame otra vez o dame más contexto.",
-            "What I remember isn't enough. Ask again or give me more to go on."
+            "Sigo aquí, Señor. Dime más o escribe con calma.",
+            "I'm here, Señor. Say more, or type it."
           )
       );
 
   const llmText = await think(llm, {
+    timeout: 35000,
     messages: [
       { role: "system", content: systemPrompt(profile, memory, lang) },
-      ...history.slice(-8),
+      ...(history || []).slice(-16),
       {
         role: "user",
         content:
           `${address(profile)}: ${q}\n\n` +
           (useWeb
             ? `Web (several pages, combine; cite 2–5 URLs):\n` + packWebForLlm(results)
-            : "No web this turn. Use memory and reasoning only.") +
-          `\n\nAnswer in ${languageName(lang)}. Be actually helpful. A little wit if it fits. No status dump.` +
+            : "Conversation turn. Use recent history, memory, and judgment. No web this turn unless you already know.") +
+          `\n\nReply in ${languageName(lang)} as a continuing chat. Helpful, a little wit if it fits. No status dump.` +
           (useWeb ? " Combine the pages. Cite 2-5 URLs." : ""),
       },
     ],

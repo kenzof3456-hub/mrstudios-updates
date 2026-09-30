@@ -51,7 +51,8 @@ const packed = packWebForLlm([
 assert.match(packed, /page body from first/);
 assert.match(packed, /https:\/\/b\.example/);
 
-assert.strictEqual(parsePlan('{"action":"answer","query":"quién es"}').need_web, true);
+assert.strictEqual(parsePlan('{"action":"answer","query":"quién es"}').need_web, false);
 assert.strictEqual(parsePlan('{"action":"datetime"}').need_web, false);
+assert.strictEqual(parsePlan('{"action":"search","query":"x"}').need_web, true);
 
 console.log("search ok");

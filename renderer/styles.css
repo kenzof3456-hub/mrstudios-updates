@@ -211,6 +211,40 @@ body {
   border-color: var(--cyan);
 }
 
+.mic-hint {
+  position: fixed;
+  left: 12%;
+  right: 12%;
+  top: 18%;
+  z-index: 8;
+  padding: 22px 26px;
+  background: rgba(8, 14, 22, 0.94);
+  border: 2px solid var(--cyan);
+  color: #e8f7ff;
+  text-align: center;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 40px rgba(78, 203, 255, 0.25);
+}
+
+.mic-hint-title {
+  margin: 0 0 10px;
+  font-size: 22px;
+  color: var(--cyan);
+}
+
+.mic-hint-body {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #d7eef8;
+}
+
+.mic-hint-type {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .composer {
   flex: 1;
   display: flex;

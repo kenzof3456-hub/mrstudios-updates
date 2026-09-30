@@ -37,6 +37,7 @@ const prompt = systemPrompt(
 );
 assert.match(prompt, /Señor/);
 assert.match(prompt, /Think, then act/);
+assert.match(prompt, /Chat is the default/);
 assert.doesNotMatch(prompt, /Rabbit/);
 
 assert.match(html, /id="orb"/);
@@ -75,10 +76,18 @@ assert.match(speak, /volume = 1/);
 assert.match(app, /HABLANDO/);
 assert.match(app, /no pude hablar/);
 assert.match(app, /onUserUnlock/);
+assert.match(app, /enableEar/);
+assert.match(app, /getUserMedia/);
+assert.match(app, /mic-hint/);
+assert.match(html, /id="mic-hint"/);
+assert.match(html, /Reintentar micrófono/);
+assert.match(app, /voiceMode === "always"/);
+assert.match(main, /setDevicePermissionHandler/);
 assert.match(tts, /\$s\.Volume = 100/);
 assert.match(main, /autoplay-policy/);
 assert.match(prompt, /search the web thoroughly/);
-assert.match(planSrc, /need_web true unless/);
+assert.match(planSrc, /Chat is the default/);
+assert.match(planSrc, /need_web true for unknown facts/);
 assert.match(searchSrc, /packWebForLlm/);
 assert.match(searchSrc, /documentation overview/);
 

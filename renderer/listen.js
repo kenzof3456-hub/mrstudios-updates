@@ -30,7 +30,8 @@ function createListener({ onFinal, onError }) {
       if (final) onFinal(final);
     };
     instance.onerror = (e) => {
-      if (e.error !== "no-speech" && e.error !== "aborted") onError(e.error);
+      if (e.error === "no-speech" || e.error === "aborted") return;
+      onError(e.error || "stt");
     };
     instance.onend = () => {
       if (want && !ptt) {
@@ -54,9 +55,15 @@ function createListener({ onFinal, onError }) {
     rec.continuous = true;
     try {
       rec.start();
-      setEar("OÍDO: SIEMPRE ON");
-    } catch {
-      setEar("OÍDO: YA ACTIVO");
+      setEar("OÍDO ON");
+    } catch (err) {
+      const msg = String((err && err.message) || err || "");
+      if (/already started/i.test(msg)) {
+        setEar("OÍDO ON");
+        return;
+      }
+      setEar("OÍDO FALLO");
+      onError(msg || "no pude arrancar el oído");
     }
   }
 

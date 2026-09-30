@@ -27,9 +27,9 @@ Tono: cálido, vivo, sin excesos. UI: esfera holográfica **cian** (wireframe ti
 ## Micrófono (Windows)
 
 1. Configuración de Windows → Privacidad y seguridad → Micrófono → **Permitir que las aplicaciones de escritorio accedan al micrófono**.
-2. Al pulsar **Oído siempre** o **PTT**, Electron pide el mic. Acepta.
-3. STT v1: **Web Speech API** de Chromium (`es-MX`). En algunas builds necesita red. Alternativa PTT si el oído continuo se corta.
-4. Di **«Jarvis»** (o «oye Jarvis…»). Contesta en voz alta. Sigue con la orden: «Jarvis, qué hora es».
+2. El **primer clic** en la ventana enciende **Oído** y pide el micrófono al momento. No hace falta un segundo clic. Si Windows lo niega, sale un aviso grande en pantalla (no se calla). Reintentar o escribe abajo.
+3. STT: **Web Speech API** de Chromium (`es-MX`). En algunas builds necesita red. PTT sigue ahí.
+4. Con Oído ON, habla y te oye (también «Jarvis, qué hora es»). Si no hay micro (esta nube), el teclado sigue.
 5. TTS por defecto (estilo J.A.R.V.I.S. legal, sin clonar al actor):
    - **`es-ES-AlvaroNeural`** (Microsoft Edge neural, varón castellano calmado — el texto sigue en español).
    - Si falla: **`en-GB-RyanNeural`** (varón británico en el mismo servicio Edge).
@@ -46,7 +46,7 @@ Oído continuo puede oír al propio TTS; Jarvis pausa el reconocimiento mientras
 
 1. Altavoces o auriculares enchufados; volumen de Windows **no en 0** y Jarvis no silenciado en el mezclador.
 2. Instala voces: **Configuración → Hora e idioma → Voz** (Álvaro, Jorge, George, Ryan). Edge instalado ayuda al TTS neural.
-3. El **primer clic** en la ventana (o **Oído** / cualquier botón) desbloquea el audio.
+3. El **primer clic** en la ventana desbloquea el audio **y** enciende Oído (pide el mic al momento).
 4. El chip **HABLANDO** debe encenderse al hablar; si oyes silencio, sube volumen.
 5. Si el chat dice `no pude hablar: …`, el motivo está ahí (autoplay, voces vacías, Edge, etc.). Vuelve a pulsar la ventana.
 

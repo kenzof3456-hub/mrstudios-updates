@@ -80,6 +80,9 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionCheckHandler((_wc, permission) =>
     ["media", "microphone", "audioCapture", "display-capture"].includes(permission)
   );
+  if (typeof session.defaultSession.setDevicePermissionHandler === "function") {
+    session.defaultSession.setDevicePermissionHandler(() => true);
+  }
 
   const userData = app.getPath("userData");
   let profile = loadProfile(userData);

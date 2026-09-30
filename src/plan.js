@@ -1,4 +1,5 @@
 const ACTIONS = new Set([
+  "chat",
   "answer",
   "search",
   "craft",
@@ -15,6 +16,8 @@ const ACTIONS = new Set([
 ]);
 
 const LOCAL_NO_WEB = new Set([
+  "chat",
+  "answer",
   "open_app",
   "close_app",
   "datetime",
@@ -34,7 +37,9 @@ function parsePlan(raw) {
     const j = JSON.parse(m[0]);
     if (!j || !ACTIONS.has(j.action)) return null;
     const needWeb =
-      j.need_web == null ? !LOCAL_NO_WEB.has(j.action) : Boolean(j.need_web);
+      j.need_web == null
+        ? j.action === "search" || j.action === "tv"
+        : Boolean(j.need_web);
     return {
       action: j.action,
       query: String(j.query || "").trim(),
@@ -72,18 +77,21 @@ function intentFromPlan(plan, fallbackQuery) {
     case "profile":
       return { type: "profile" };
     case "search":
+      return { type: "question", query: q, need_web: true };
+    case "chat":
+      return { type: "question", query: q, need_web: false };
     case "answer":
     default:
-      return { type: "question", query: q, need_web: plan.need_web !== false };
+      return { type: "question", query: q, need_web: plan.need_web === true };
   }
 }
 
 function plannerPrompt(who, langName) {
   return [
     `You are Jarvis planning one desktop turn for ${who}.`,
-    `Reply JSON only: {"action":"answer|search|craft|tv|open_app|close_app|execute|remember|datetime|look_screen|refuse|voice|profile","query":"","app":"","need_web":true}`,
-    `Language of ${who}: ${langName}. Think, then pick one action that uses tools or memory if needed.`,
-    "need_web true unless the action is local (datetime, open_app, close_app, remember, profile, execute, look_screen, voice, refuse). Open questions, people, TV extras, and code docs MUST search.",
+    `Reply JSON only: {"action":"chat|answer|search|craft|tv|open_app|close_app|execute|remember|datetime|look_screen|refuse|voice|profile","query":"","app":"","need_web":false}`,
+    `Language of ${who}: ${langName}. Chat is the default. Small talk, follow-ups, opinions, a measured joke — not a command parser.`,
+    "Pick search/tv/datetime/open_app/craft/execute only when this turn needs that tool. need_web true for unknown facts, people, TV extras, code docs. need_web false for conversation.",
     "Never pirate. Never dump a status paragraph. Address him only as instructed.",
   ].join(" ");
 }
