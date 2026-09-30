@@ -26,6 +26,10 @@ const cases = [
   ["habla con voz de Jorge", "set_voice"],
   ["cambia la voz a Nova", "set_voice"],
   ["lista las voces", "list_voices"],
+  ["escribe un bot de Discord en javascript", "craft"],
+  ["escribe un bot de Discord", "craft"],
+  ["script de Blender que crea un cubo y exporta glTF", "craft"],
+  ["guarda el codigo", "save_code"],
 ];
 
 for (const [text, type] of cases) {

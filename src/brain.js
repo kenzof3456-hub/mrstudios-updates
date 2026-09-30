@@ -10,6 +10,16 @@ const { parseWake } = require("./wake");
 const { pickWakeLine } = require("./spoken");
 const { resolveVoice, catalog, formatVoiceLine } = require("./voices");
 const { detectLanguage, languageName, localeFor, tx } = require("./lang");
+const {
+  isPiracy,
+  pirateReply,
+  localFallback,
+  craftSystem,
+  extractFiles,
+  setLastFiles,
+  getLastFiles,
+  writeCraftFile,
+} = require("./craft");
 
 function systemPrompt(profile, memory, lang) {
   const langName = languageName(lang || profile.language || "es");
@@ -19,6 +29,7 @@ function systemPrompt(profile, memory, lang) {
     `Reply in ${langName}. Match his language exactly.`,
     `Tone: warm, composed, a spark of wit when it fits. Not hyper. Not a joke every line. Not theatrical. Alive, not carnival.`,
     `Keep answers free-form but concise. Skip forced catchphrases.`,
+    `You can write real code (any common language), game/mod scripts (original only), Discord bots, Windows automation, and Blender/3D help (bpy, geometry nodes, glTF/OBJ). Never pirate paid mods or assets.`,
     `System: ${profile.os}.`,
     `Rabbit's memory:\n${memory.contextBlock()}`,
     `Use memories when they help. Cite web sources in one line.`,
@@ -37,6 +48,7 @@ async function handleTurn({
   setVoice,
   extraVoices,
   setLanguage,
+  craftDir,
 }) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
@@ -291,6 +303,71 @@ async function handleTurn({
     return { reply, intent: intent.type, language: lang };
   }
 
+  if (intent.type === "save_code") {
+    const files = getLastFiles();
+    if (!files.length) {
+      return {
+        reply: tx(lang, "No hay código reciente. Pídeme un script primero.", "No recent code. Ask for a script first."),
+        intent: intent.type,
+        language: lang,
+      };
+    }
+    if (!craftDir) {
+      return {
+        reply: tx(lang, "No pude elegir carpeta de guardado.", "Couldn't pick a save folder."),
+        intent: intent.type,
+        language: lang,
+      };
+    }
+    const saved = files.map((f) => writeCraftFile(craftDir, f));
+    return {
+      reply: say(
+        tx(lang, "Guardado.", "Saved."),
+        saved.join("\n")
+      ),
+      intent: intent.type,
+      language: lang,
+      saved,
+      files,
+    };
+  }
+
+  if (intent.type === "craft") {
+    if (isPiracy(intent.query)) {
+      return { reply: pirateReply(lang), intent: intent.type, language: lang };
+    }
+    const llmText = await chatWithLlm({
+      apiKey: llm.apiKey,
+      baseUrl: llm.baseUrl,
+      model: llm.model,
+      timeout: 50000,
+      messages: [
+        { role: "system", content: systemPrompt(profile, memory, lang) + " " + craftSystem(languageName(lang)) },
+        ...history.slice(-6),
+        { role: "user", content: intent.query },
+      ],
+    });
+    const local = localFallback(intent.query, lang);
+    const reply =
+      llmText ||
+      (local && local.reply) ||
+      tx(
+        lang,
+        "Sin API no genero código a medida. Prueba Blender, Discord bot, glTF, o pon OPENAI_API_KEY.",
+        "Without an API I only have a few templates (Blender, Discord bot, glTF). Set OPENAI_API_KEY for custom code."
+      );
+    let files = extractFiles(reply, intent.query);
+    if (!files.length && local && local.files) files = local.files;
+    setLastFiles(files);
+    return {
+      reply,
+      intent: intent.type,
+      language: lang,
+      files,
+      llm: Boolean(llmText),
+    };
+  }
+
   const results = await searchWeb(intent.query);
   const fallback = say(formatSearchAnswer(intent.query, results, lang), aside(memory, intent.query, lang));
 
@@ -342,7 +419,7 @@ function greeting(profile, memory) {
   return say(
     tx(lang, "En línea, Rabbit.", "Online, Rabbit."),
     `${time}. ${weekday}, ${date} (${timeZone}).`,
-    tx(lang, "Adjuntar, mensajes, voces: abajo y arriba.", "Attach, messages, voices: bottom and top."),
+    tx(lang, "Adjuntar, mensajes, voces: abajo y arriba. También código y Blender.", "Attach, messages, voices: bottom and top. I can also write code and Blender scripts."),
     win,
     wink
   );

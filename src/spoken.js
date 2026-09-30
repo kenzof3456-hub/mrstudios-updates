@@ -1,5 +1,6 @@
 function forSpeech(text) {
   return String(text || "")
+    .replace(/```[\s\S]*?```/g, " ")
     .replace(/\n+/g, ". ")
     .replace(/\s+/g, " ")
     .trim();

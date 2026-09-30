@@ -1,4 +1,4 @@
-/** Written voice for v1. Later TTS should follow this: lively, emotional, not flat. */
+/** Join reply lines. Tone lives in copy + system prompt, not here. */
 
 function say(...parts) {
   return parts

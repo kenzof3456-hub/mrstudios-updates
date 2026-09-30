@@ -47,8 +47,8 @@ function postChat({ apiKey, baseUrl, model, messages, timeout = 45000 }) {
   });
 }
 
-function chatWithLlm({ apiKey, baseUrl, model, messages }) {
-  return postChat({ apiKey, baseUrl, model, messages, timeout: 25000 });
+function chatWithLlm({ apiKey, baseUrl, model, messages, timeout }) {
+  return postChat({ apiKey, baseUrl, model, messages, timeout: timeout || 25000 });
 }
 
 function visionRead({ apiKey, baseUrl, model, dataUrl, prompt }) {

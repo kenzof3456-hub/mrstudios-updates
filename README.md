@@ -17,8 +17,9 @@ Jarvis habla con **Rabbit** (Luis). Contesta en el **mismo idioma** que Rabbit (
 9. **Pantalla (solo si lo pides):** «mira mi pantalla» captura el monitor principal y la guarda en `userData/last-screen.png`. Nunca en segundo plano. «qué es esto» / «quién es»: visión (si hay API) u OCR local (`tesseract`), luego búsqueda web. La imagen solo se envía al LLM que configuraste.
 10. **Mensajes a una persona:** «manda a mamá por WhatsApp que ya voy». Parsea destinatario, texto y app (WhatsApp, Discord, Telegram, SMS, correo). Si no dices app, usa un recuerdo tipo «usa WhatsApp para mamá» o pregunta **una vez** y lo guarda. En Windows abre/enfoca la app (URI `whatsapp://`, `wa.me`, `discord`, `tg://`, `mailto:`, `sms:`), busca el contacto, pega y Enter. Confirma en voz qué se mandó o qué lo bloqueó. Sin destinatario + mensaje claros, no envía. Apodos desde `memory.json`; no inventa números ni correos.
 11. **Adjuntar:** botón visible **Adjuntar** en el compositor (no detrás del orbe). Fotos, capturas y docs se copian a `userData/uploads`. Preview pequeña. El siguiente mensaje (o «mira esto» / enviar vacío) usa el archivo. Imágenes: misma visión/OCR que la pantalla, luego búsqueda si preguntas quién/qué. Solo local, salvo el LLM que configuraste.
+12. **Código y 3D:** programas, scripts de juegos (Minecraft, Roblox Lua, FiveM — originales), bots de Discord, automatización Windows, Blender (`bpy`, geometry nodes, glTF/OBJ). Pega código real. «guarda el archivo» lo escribe en `userData/craft`. No piratea mods de pago.
 
-Tono: cálido, vivo, sin excesos. UI: esfera azul central (pulso en reposo, anillos al escuchar, ondas al hablar). Chat secundario.
+Tono: cálido, vivo, sin excesos. UI: esfera holográfica cian (anillos, sparks). Chat secundario.
 
 ## Micrófono (Windows)
 

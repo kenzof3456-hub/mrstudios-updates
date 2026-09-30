@@ -1,5 +1,6 @@
 const { parseSendMessage } = require("./send-parse");
 const { parseVoiceCommand } = require("./voices");
+const { looksLikeCraft, looksLikeSaveCode } = require("./craft");
 
 function normalize(text) {
   return String(text || "")
@@ -41,6 +42,10 @@ function detectIntent(raw) {
   );
   if (forget && forget[2] && !/^todo\b/.test(forget[2])) {
     return { type: "forget", query: forget[2].trim() };
+  }
+
+  if (looksLikeSaveCode(raw)) {
+    return { type: "save_code" };
   }
 
   const remember = t.match(
@@ -136,6 +141,10 @@ function detectIntent(raw) {
       return { type: "discord_camera" };
     }
     return { type: "open_app", app };
+  }
+
+  if (looksLikeCraft(raw)) {
+    return { type: "craft", query: String(raw).trim() };
   }
 
   return { type: "question", query: String(raw).trim() };

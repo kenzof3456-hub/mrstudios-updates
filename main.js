@@ -224,6 +224,7 @@ app.whenReady().then(() => {
       setVoice,
       setLanguage,
       extraVoices: await extraVoices(),
+      craftDir: path.join(userData, "craft"),
     });
   });
 
