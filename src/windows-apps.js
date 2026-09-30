@@ -110,7 +110,7 @@ async function openApp(appName) {
   if (!isWindows) {
     return {
       ok: false,
-      message: `Rabbit, abrir aplicaciones solo funciona en Windows. Pediste abrir: ${appName}.`,
+      message: `Rabbit, abrir apps es magia de tu PC Windows. Pediste abrir: ${appName}. En cuanto estemos ahí, lo lanzo.`,
     };
   }
 
@@ -120,8 +120,8 @@ async function openApp(appName) {
     return {
       ok: r.ok,
       message: r.ok
-        ? "Listo, Rabbit. Estoy abriendo Discord."
-        : `No pude lanzar Discord (${r.stderr || "error"}).`,
+        ? "¡Dale, Rabbit! Estoy abriendo Discord."
+        : `Uy, no pude lanzar Discord (${r.stderr || "error"}). Lo reintentamos cuando quieras.`,
     };
   }
 
@@ -130,7 +130,7 @@ async function openApp(appName) {
       `Start-Process -FilePath '${known.exe.replace(/'/g, "''")}'`
     );
     if (r.ok) {
-      return { ok: true, message: `Hecho, Rabbit. Abrí ${appName}.` };
+      return { ok: true, message: `¡Hecho, Rabbit! Abrí ${appName}.` };
     }
   }
 
@@ -146,11 +146,11 @@ Write-Output $app.Name
   const r = await runPowershell(script);
   if (r.ok) {
     const name = r.stdout || appName;
-    return { ok: true, message: `Hecho, Rabbit. Abrí ${name}.` };
+    return { ok: true, message: `¡Hecho, Rabbit! Abrí ${name}.` };
   }
   return {
     ok: false,
-    message: `No pude abrir «${appName}», Rabbit. ${r.stderr || r.stdout || "No está en Inicio ni en rutas conocidas."}`,
+    message: `No pude abrir «${appName}», Rabbit. ${r.stderr || r.stdout || "No está en Inicio ni en rutas conocidas."} Si me dices el nombre exacto, lo vuelvo a intentar.`,
   };
 }
 
@@ -158,7 +158,7 @@ async function closeApp(appName) {
   if (!isWindows) {
     return {
       ok: false,
-      message: `Rabbit, cerrar aplicaciones solo funciona en Windows. Pediste cerrar: ${appName}.`,
+      message: `Cerrar apps también es cosa de tu Windows, Rabbit. Pediste cerrar: ${appName}.`,
     };
   }
 
@@ -175,13 +175,13 @@ async function closeApp(appName) {
       `Stop-Process -Name '${image.replace(/\.exe$/i, "").replace(/'/g, "''")}' -Force -ErrorAction SilentlyContinue; taskkill /IM '${image.replace(/'/g, "''")}' /F 2>$null; Write-Output 'ok'`
     );
     if (r.ok) {
-      return { ok: true, message: `Hecho, Rabbit. Cerré ${appName}.` };
+      return { ok: true, message: `Listo, Rabbit. Cerré ${appName}. Un clic y se fue.` };
     }
   }
 
   return {
     ok: false,
-    message: `No pude cerrar «${appName}», Rabbit. Puede que no estuviera en ejecución.`,
+    message: `No pude cerrar «${appName}», Rabbit. Puede que no estuviera en ejecución. Si sigue ahí, dime y lo intentamos otra vez.`,
   };
 }
 

@@ -10,6 +10,11 @@ const cases = [
   ["enciende la cámara de Discord", "discord_camera"],
   ["prende la camara de discord", "discord_camera"],
   ["¿Qué es un agujero negro?", "question"],
+  ["recuerda que uso Discord por las tardes", "remember"],
+  ["me gusta el café", "remember"],
+  ["qué sabes de mí", "recall"],
+  ["olvida el café", "forget"],
+  ["olvida todo", "forget_all"],
 ];
 
 for (const [text, type] of cases) {

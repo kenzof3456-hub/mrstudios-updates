@@ -9,9 +9,12 @@ Jarvis habla con **Rabbit** (Luis) en español, HUD oscuro estilo J.A.R.V.I.S.
 1. Chat de texto.
 2. Abre y cierra apps de Windows por nombre (menú Inicio, rutas conocidas, `taskkill`). Confirma en el chat.
 3. Perfil local persistente: Luis / Rabbit / Windows.
-4. Cámara de Discord (mejor esfuerzo): abre Discord si hace falta, enfoca la ventana y envía **Ctrl+Shift+V** (Toggle Camera).
-5. Preguntas generales: busca en la web y responde en español, con fuentes cortas.
-6. Hora, día de la semana y fecha en español, zona horaria local de Windows.
+4. **Memoria local** (`userData/memory.json`): si Rabbit cuenta hechos (gustos, apps, Discord, horarios, cómo le gusta que le hablen), Jarvis los guarda y los usa después. «qué sabes de mí» los lista; «olvida X» o «olvida todo» los borra.
+5. Cámara de Discord (mejor esfuerzo): abre Discord si hace falta, enfoca la ventana y envía **Ctrl+Shift+V** (Toggle Camera).
+6. Preguntas generales: busca en la web y responde en español, con fuentes cortas.
+7. Hora, día de la semana y fecha en español, zona horaria local de Windows.
+
+Tono: alegre, cálido, un poco ingenioso; siempre te llama **Rabbit**. Español por defecto.
 
 La voz queda para después.
 

@@ -18,6 +18,44 @@ function detectIntent(raw) {
   if (!t) return { type: "empty" };
 
   if (
+    /(olvida(lo)? todo|borra (todo )?lo que sabes|borra toda la memoria|reset(ea)? (la )?memoria|forget everything)/.test(
+      t
+    )
+  ) {
+    return { type: "forget_all" };
+  }
+
+  if (
+    /(que sabes de mi|que recuerdas( de mi)?|que conoces de mi|tu memoria|datos guardados|que sabes sobre mi)/.test(
+      t
+    )
+  ) {
+    return { type: "recall" };
+  }
+
+  const forget = t.match(
+    /^(olvida|borra|no recuerdes|forget)\s+(?:que |el dato |lo de |el hecho )?(.*)$/
+  );
+  if (forget && forget[2] && !/^todo\b/.test(forget[2])) {
+    return { type: "forget", query: forget[2].trim() };
+  }
+
+  const remember = t.match(
+    /^(recuerda|guarda|anota|no olvides|remember)\s+(?:que )?(.*)$/
+  );
+  if (remember && remember[2]) {
+    return { type: "remember", fact: String(raw).replace(/^(recuerda|guarda|anota|no olvides|remember)\s+(que\s+)?/i, "").trim() };
+  }
+
+  if (
+    /^(me gusta|no me gusta|prefiero|odio|siempre uso|uso mucho|mi (app|juego|horario|atajo|discord)|me dices|me llamas|mi nombre)/.test(
+      t
+    )
+  ) {
+    return { type: "remember", fact: String(raw).trim() };
+  }
+
+  if (
     /(camara|camera|webcam|video).{0,40}(discord)|(discord).{0,40}(camara|camera|webcam|video)/.test(
       t
     ) ||

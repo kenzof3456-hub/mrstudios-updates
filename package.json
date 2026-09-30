@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "test": "node src/intents.test.js",
+    "test": "node src/intents.test.js && node src/memory.test.js && node src/brain.memory.test.js",
     "dist:win": "electron-builder --win nsis --x64"
   },
   "dependencies": {

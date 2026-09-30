@@ -8,8 +8,8 @@ async function enableDiscordCamera() {
       ok: false,
       did: "none",
       message:
-        "Rabbit, el control de la cámara de Discord solo corre en tu PC Windows. " +
-        "Ahí abro Discord y envío el atajo de alternar cámara.",
+        "¡Ojo, Rabbit! El control de la cámara de Discord solo corre en tu PC Windows. " +
+        "Allí abro Discord y mando el atajo de alternar cámara. Aquí no puedo tocarla, pero ya quedó anotado el plan.",
     };
   }
 
@@ -38,10 +38,10 @@ Write-Output 'sent'
       ok: true,
       did: "launch_focus_toggle_camera",
       message:
-        (already ? "Discord ya estaba abierto. " : "Abrí Discord. ") +
+        (already ? "Discord ya estaba abierto, qué suerte. " : "¡Abrí Discord! ") +
         `Enfoqué la ventana y envié ${CAMERA_KEYBIND} (Toggle Camera). ` +
-        "Discord no expone una API para forzar la webcam ni leer si quedó encendida. " +
-        `Si no se activó, Rabbit, ve a Ajustes de Discord → Atajos de teclado y asigna «Activar cámara» a ${CAMERA_KEYBIND}.`,
+        "Discord no deja forzar ni leer la webcam, así que esto es lo más cercano que funciona. " +
+        `Si no se encendió, Rabbit, en Ajustes → Atajos asigna «Activar cámara» a ${CAMERA_KEYBIND} y me avisas.`,
     };
   }
 
@@ -50,10 +50,10 @@ Write-Output 'sent'
     did: already || launch.ok ? "opened_discord_only" : "failed",
     message:
       (already || launch.ok
-        ? "Abrí o encontré Discord, pero no pude enviar el atajo de cámara (la ventana puede no estar lista). "
-        : "No pude abrir Discord. ") +
-      `Atajo usado: ${CAMERA_KEYBIND}. Discord no permite forzar la cámara de forma fiable. ` +
-      "Si quieres, asigna ese atajo en Discord y vuelve a pedírmelo.",
+        ? "Encontré Discord, pero no pude enviar el atajo de cámara (la ventana a veces tarda). "
+        : "No pude abrir Discord esta vez. ") +
+      `Atajo: ${CAMERA_KEYBIND}. No hay forma fiable de forzar la cámara. ` +
+      "Asigna ese atajo en Discord y lo volvemos a intentar, Rabbit.",
   };
 }
 

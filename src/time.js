@@ -19,7 +19,7 @@ function formatNow(locale = "es-MX") {
     date,
     time,
     timeZone: tz,
-    text: `Rabbit, son las ${time}. Hoy es ${cap}, ${date} (zona ${tz}).`,
+    text: `¡Ahí te va, Rabbit! Son las ${time}. Hoy es ${cap}, ${date} (zona ${tz}).`,
   };
 }
 

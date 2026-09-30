@@ -1,0 +1,20 @@
+const { createMemory } = require("./memory");
+const os = require("os");
+const path = require("path");
+const fs = require("fs");
+const assert = require("assert");
+
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "jarvis-mem-"));
+const mem = createMemory(path.join(dir, "memory.json"));
+assert.strictEqual(mem.list().length, 0);
+mem.add("usa Discord todas las tardes");
+mem.add("usa Discord todas las tardes");
+assert.strictEqual(mem.list().length, 1);
+mem.add("le gusta el café");
+assert.strictEqual(mem.forget("discord").length, 1);
+assert.strictEqual(mem.list().length, 1);
+assert.strictEqual(mem.forgetAll(), 1);
+assert.strictEqual(mem.list().length, 0);
+const mem2 = createMemory(path.join(dir, "memory.json"));
+assert.strictEqual(mem2.list().length, 0);
+console.log("memory ok");

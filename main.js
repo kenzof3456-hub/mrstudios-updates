@@ -2,6 +2,7 @@ require("dotenv").config();
 const path = require("path");
 const { app, BrowserWindow, ipcMain } = require("electron");
 const { loadProfile } = require("./src/profile");
+const { createMemory } = require("./src/memory");
 const { handleTurn, greeting } = require("./src/brain");
 const { isWindows } = require("./src/windows-apps");
 
@@ -26,6 +27,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   const profile = loadProfile(app.getPath("userData"));
+  const memory = createMemory(path.join(app.getPath("userData"), "memory.json"));
   const llm = {
     apiKey: process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
@@ -36,13 +38,13 @@ app.whenReady().then(() => {
     profile,
     isWindows,
     hasLlm: Boolean(llm.apiKey),
-    greeting: greeting(profile),
+    greeting: greeting(profile, memory),
   }));
 
   ipcMain.handle("jarvis:chat", async (_evt, payload) => {
     const text = String(payload?.text || "");
     const history = Array.isArray(payload?.history) ? payload.history : [];
-    return handleTurn({ text, history, profile, llm });
+    return handleTurn({ text, history, profile, llm, memory });
   });
 
   createWindow();

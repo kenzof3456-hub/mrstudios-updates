@@ -85,14 +85,14 @@ function searchWeb(query) {
 
 function formatSearchAnswer(query, results) {
   if (!results.length) {
-    return `Rabbit, busqué «${query}» y no pude obtener resultados ahora mismo.`;
+    return `Uy, Rabbit, busqué «${query}» y ahora mismo no me devolvieron resultados. ¿Probamos con otras palabras?`;
   }
   const lines = results.slice(0, 3).map((r, i) => `${i + 1}. ${r.snippet || r.title}`);
   const cites = results
     .slice(0, 3)
     .map((r) => r.url)
     .join(" · ");
-  return `Rabbit, esto encontré sobre «${query}»:\n\n${lines.join("\n")}\n\nFuentes: ${cites}`;
+  return `¡Buena pregunta, Rabbit! Esto encontré sobre «${query}»:\n\n${lines.join("\n")}\n\nFuentes: ${cites}`;
 }
 
 module.exports = { searchWeb, formatSearchAnswer };
