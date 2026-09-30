@@ -609,8 +609,19 @@ async function handleTurn({
   }
 
   const q = intent.query || work;
-  const results = await searchWeb(q);
-  const fallback = say(formatSearchAnswer(q, results, lang), aside(memory, q, lang));
+  const useWeb = intent.need_web !== false;
+  const results = useWeb ? await searchWeb(q) : [];
+  const memBits = aside(memory, q, lang);
+  const fallback = useWeb
+    ? say(formatSearchAnswer(q, results, lang), memBits)
+    : say(
+        memBits ||
+          tx(
+            lang,
+            "Con lo que me has contado no me alcanza. Pregúntame otra vez o dame más contexto.",
+            "What I remember isn't enough. Ask again or give me more to go on."
+          )
+      );
 
   const llmText = await think(llm, {
     messages: [
@@ -620,13 +631,16 @@ async function handleTurn({
         role: "user",
         content:
           `${address(profile)}: ${q}\n\n` +
-          `Web:\n` +
-          (results.length
-            ? results
-                .map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`)
-                .join("\n\n")
-            : "(none)") +
-          `\n\nAnswer in ${languageName(lang)}. Be actually helpful: synthesize the sources, don't list stubs. A little wit if it fits. Cite 1-3 URLs. No status dump.`,
+          (useWeb
+            ? `Web:\n` +
+              (results.length
+                ? results
+                    .map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`)
+                    .join("\n\n")
+                : "(none)")
+            : "No web this turn. Use memory and reasoning only.") +
+          `\n\nAnswer in ${languageName(lang)}. Be actually helpful. A little wit if it fits. No status dump.` +
+          (useWeb ? " Cite 1-3 URLs if you used the web." : ""),
       },
     ],
   });
@@ -634,7 +648,7 @@ async function handleTurn({
   return {
     reply: llmText || fallback,
     intent: "question",
-    searched: true,
+    searched: useWeb && results.length > 0,
     sources: results.slice(0, 3).map((r) => r.url),
     llm: Boolean(llmText),
   };

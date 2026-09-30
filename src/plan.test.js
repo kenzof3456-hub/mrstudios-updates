@@ -7,5 +7,5 @@ assert.strictEqual(p.action, "craft");
 assert.strictEqual(intentFromPlan(p, "x").type, "craft");
 assert.strictEqual(intentFromPlan({ action: "execute", query: "" }, "").type, "do_last");
 assert.strictEqual(intentFromPlan({ action: "tv", query: "Japón" }, "").type, "tv");
-assert.strictEqual(intentFromPlan({ action: "answer", query: "agujero negro" }, "").type, "question");
+assert.strictEqual(intentFromPlan({ action: "answer", query: "café", need_web: false }, "").need_web, false);
 console.log("plan ok");

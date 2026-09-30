@@ -77,6 +77,33 @@ assert.match(systemPrompt(profile, memory, "es"), /Think, then act/);
   assert.match(who.reply, /Señor/);
   assert.doesNotMatch(who.reply, /Adjuntar|UTC/);
 
+  await handleTurn({
+    text: "recuerda que me gusta el café",
+    history: [],
+    profile,
+    llm: { apiKey: "" },
+    memory,
+    craftDir,
+  });
+  const fromMem = {
+    apiKey: "test",
+    chat: async ({ json }) => {
+      if (json) return JSON.stringify({ action: "answer", query: "café", need_web: false });
+      return "Te gusta el café, Señor. Lo tengo en la libreta.";
+    },
+  };
+  const likes = await handleTurn({
+    text: "qué me gusta",
+    history: [],
+    profile,
+    llm: fromMem,
+    memory,
+    craftDir,
+  });
+  assert.strictEqual(likes.intent, "question");
+  assert.strictEqual(likes.searched, false);
+  assert.match(likes.reply, /café|Señor/i);
+
   console.log("brain llm ok");
 })().catch((e) => {
   console.error(e);
