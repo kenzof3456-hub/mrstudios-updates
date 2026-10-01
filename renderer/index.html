@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; media-src 'self' blob: data:; connect-src 'self' https://www.google.com https://www.gstatic.com"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; media-src 'self' blob: data: mediastream:; connect-src 'self' https://www.google.com https://www.gstatic.com https://www.googleapis.com https://www.google.es wss://www.google.com wss://www.gstatic.com"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>J.A.R.V.I.S.</title>
@@ -26,6 +26,7 @@
     <audio id="jarvis-voice" preload="auto" playsinline></audio>
 
     <p id="caption" class="caption"></p>
+    <p id="live-words" class="live-words" aria-live="polite"></p>
 
     <div id="mic-hint" class="mic-hint" hidden>
       <p class="mic-hint-title" id="mic-hint-title">Jarvis no oye el micrófono</p>

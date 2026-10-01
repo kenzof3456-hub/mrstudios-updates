@@ -49,7 +49,7 @@ function postChat({ apiKey, baseUrl, model, messages, timeout = 45000, json = fa
 }
 
 function chatWithLlm({ apiKey, baseUrl, model, messages, timeout, json }) {
-  return postChat({ apiKey, baseUrl, model, messages, timeout: timeout || 25000, json });
+  return postChat({ apiKey, baseUrl, model, messages, timeout: timeout || 12000, json });
 }
 
 function visionRead({ apiKey, baseUrl, model, dataUrl, prompt }) {
@@ -58,7 +58,7 @@ function visionRead({ apiKey, baseUrl, model, dataUrl, prompt }) {
     apiKey,
     baseUrl,
     model: model || "gpt-4o-mini",
-    timeout: 45000,
+    timeout: 12000,
     messages: [
       {
         role: "user",

@@ -89,6 +89,13 @@ assert.match(prompt, /search the web thoroughly/);
 assert.match(planSrc, /Chat is the default/);
 assert.match(planSrc, /need_web true for unknown facts/);
 assert.match(searchSrc, /packWebForLlm/);
-assert.match(searchSrc, /documentation overview/);
+assert.match(searchSrc, /topicQuery/);
+assert.match(searchSrc, /wikiSearch|wikipedia/);
+assert.match(app, /enqueueSend/);
+assert.match(app, /PENSANDO/);
+assert.doesNotMatch(app, /sendBtn\.disabled = true/);
+assert.match(main, /jarvis:transcribe/);
+assert.match(main, /uncaughtException/);
+assert.match(fs.readFileSync(path.join(root, "renderer", "listen.js"), "utf8"), /whisperLoop|transcribeBlob/);
 
 console.log("mustship ok");

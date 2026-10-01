@@ -109,7 +109,7 @@ async function maybePlan(llm, intent, work, ctx) {
 async function speakThought(llm, profile, memory, lang, brief, facts, history) {
   if (!hasThinker(llm)) return null;
   const text = await think(llm, {
-    timeout: 20000,
+    timeout: 12000,
     messages: [
       { role: "system", content: systemPrompt(profile, memory, lang) },
       ...(history || []).slice(-12),
@@ -550,7 +550,7 @@ async function handleTurn({
       return { reply: pirateReply(lang), intent: intent.type, language: lang };
     }
     const llmText = await think(llm, {
-      timeout: 50000,
+      timeout: 12000,
       messages: [
         { role: "system", content: systemPrompt(profile, memory, lang) + " " + craftSystem(languageName(lang)) },
         ...history.slice(-6),
@@ -596,7 +596,7 @@ async function handleTurn({
     const pack = await lookupTv(intent.query, lang);
     const packed = formatTvAnswer(lang, pack);
     const llmText = await think(llm, {
-      timeout: 35000,
+      timeout: 12000,
       messages: [
         { role: "system", content: systemPrompt(profile, memory, lang) + " " + tvSystem(languageName(lang)) },
         {
@@ -633,7 +633,7 @@ async function handleTurn({
       );
 
   const llmText = await think(llm, {
-    timeout: 35000,
+    timeout: 12000,
     messages: [
       { role: "system", content: systemPrompt(profile, memory, lang) },
       ...(history || []).slice(-16),

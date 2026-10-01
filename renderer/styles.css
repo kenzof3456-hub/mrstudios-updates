@@ -87,6 +87,31 @@ body {
   text-align: center;
   font-size: 15px;
   line-height: 1.45;
+  color: var(--muted);
+}
+
+.live-words {
+  position: fixed;
+  left: 10%;
+  right: 10%;
+  top: 58%;
+  z-index: 3;
+  text-align: center;
+  font-size: 26px;
+  line-height: 1.35;
+  color: var(--cyan);
+  text-shadow: 0 0 18px rgba(78, 203, 255, 0.35);
+  pointer-events: none;
+  min-height: 1.4em;
+}
+  position: fixed;
+  left: 12%;
+  right: 12%;
+  bottom: 22%;
+  z-index: 2;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.45;
   color: var(--jarvis);
   text-shadow: 0 0 18px rgba(78, 203, 255, 0.35);
   min-height: 1.4em;

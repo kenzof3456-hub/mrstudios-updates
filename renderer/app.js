@@ -29,6 +29,8 @@ let retrySpeak = "";
 let earWanted = true;
 let earBusy = false;
 let skipEarToggle = 0;
+let turnBusy = false;
+const sendQueue = [];
 
 function showAttach(info) {
   pendingAttach = info;
@@ -98,12 +100,26 @@ function setTalking(on) {
   applyOrb();
 }
 
+function setThinking(on) {
+  if (!pill) return;
+  if (on) {
+    pill.textContent = "PENSANDO…";
+    pill.classList.add("hablando");
+  } else if (!speaking) {
+    pill.textContent = onlineLabel;
+    pill.classList.remove("hablando");
+  }
+}
+
 async function talk(text) {
+  window.__jarvisMuteEar = true;
   if (window.unlockAudio) await window.unlockAudio();
   setTalking(true);
   try {
-    if (listener && voiceMode === "always") listener.stop();
-    const result = await window.speakOut(text, (amp, freq) => window.orbSetLevel && window.orbSetLevel(amp, freq));
+    const result = await Promise.race([
+      window.speakOut(text, (amp, freq) => window.orbSetLevel && window.orbSetLevel(amp, freq)),
+      new Promise((r) => setTimeout(() => r({ ok: false, error: "tts-timeout" }), 12000)),
+    ]);
     const ok = result && (result.ok === true || typeof result === "string" && result !== "none");
     if (!ok) {
       const reason = (result && result.error) || "sin motor de voz";
@@ -114,61 +130,86 @@ async function talk(text) {
     }
   } finally {
     setTalking(false);
-    if (voiceMode === "always" && listener) listener.startAlways();
+    window.__jarvisMuteEar = false;
     applyOrb();
   }
 }
 
-async function onUserUnlock() {
-  if (window.unlockAudio) await window.unlockAudio();
-  if (earWanted) await enableEar();
-  if (retrySpeak && !speaking) {
+async function onUserUnlock(ev) {
+  const t = ev && ev.target;
+  if (t && (t.id === "input" || t.id === "send" || (t.closest && t.closest("#form")))) {
+    return;
+  }
+  if (window.unlockAudio) window.unlockAudio().catch(() => {});
+  if (earWanted) enableEar().catch(() => {});
+  if (retrySpeak && !speaking && !turnBusy) {
     const line = retrySpeak;
     retrySpeak = "";
-    await talk(line);
+    talk(line).catch(() => {});
   }
 }
 
-async function send(text) {
+function enqueueSend(text) {
   const trimmed = (text || "").trim();
   const withFile = Boolean(pendingAttach);
   if (!trimmed && !withFile) return;
   const spoken = trimmed || "mira esto";
-  addMsg("user", withFile ? spoken + "  ·  " + pendingAttach.name : spoken);
-  history.push({ role: "user", content: spoken });
-  input.value = "";
-  sendBtn.disabled = true;
   const useAttach = withFile;
-  try {
-    const res = await window.jarvis.chat(spoken, history.slice(0, -1), { useAttach });
-    const reply = res.reply || "Sin respuesta.";
-    addMsg("jarvis", reply);
-    history.push({ role: "assistant", content: reply });
-    if (useAttach) hideAttach();
-    if (res.voice) await fillVoices();
-    if (res.language) {
-      const stt = {
-        es: "es-MX",
-        en: "en-GB",
-        pt: "pt-BR",
-        fr: "fr-FR",
-        de: "de-DE",
-        it: "it-IT",
-        ja: "ja-JP",
-        zh: "zh-CN",
-        ko: "ko-KR",
-      };
-      window.__jarvisSttLang = stt[res.language] || "es-MX";
-    }
-    await talk(reply);
-  } catch (err) {
-    const msg = "Fallo de enlace, Señor: " + err.message;
-    addMsg("jarvis", msg);
-    await talk(msg);
-  } finally {
-    sendBtn.disabled = false;
-    input.focus();
+  const attachName = withFile && pendingAttach ? pendingAttach.name : "";
+  if (useAttach) hideAttach();
+  if (input) {
+    input.value = "";
+    input.disabled = false;
   }
+  if (sendBtn) sendBtn.disabled = false;
+  sendQueue.push({ spoken, useAttach, attachName });
+  pumpTurns();
+}
+
+async function pumpTurns() {
+  if (turnBusy) return;
+  turnBusy = true;
+  setThinking(true);
+  try {
+    while (sendQueue.length) {
+      const job = sendQueue.shift();
+      await runTurn(job);
+    }
+  } finally {
+    turnBusy = false;
+    setThinking(false);
+    if (input) {
+      input.disabled = false;
+      input.focus();
+    }
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+async function runTurn(job) {
+  const spoken = job.spoken;
+  addMsg("user", job.useAttach && job.attachName ? spoken + "  ·  " + job.attachName : spoken);
+  history.push({ role: "user", content: spoken });
+  const hung = { reply: "Tardé de más, Señor. Prueba otra vez o escribe." };
+  let res = hung;
+  try {
+    res =
+      (await Promise.race([
+        window.jarvis.chat(spoken, history.slice(0, -1), { useAttach: job.useAttach }),
+        new Promise((r) => setTimeout(() => r(hung), 14000)),
+      ])) || hung;
+  } catch (err) {
+    res = { reply: "Fallo de enlace, Señor: " + ((err && err.message) || "error") };
+  }
+  const reply = (res && res.reply) || hung.reply;
+  addMsg("jarvis", reply);
+  history.push({ role: "assistant", content: reply });
+  if (res && res.language) {
+    const stt = { es: "es-MX", en: "en-GB", pt: "pt-BR", fr: "fr-FR", de: "de-DE", it: "it-IT", ja: "ja-JP", zh: "zh-CN", ko: "ko-KR" };
+    window.__jarvisSttLang = stt[res.language] || "es-MX";
+  }
+  if (res && res.voice) fillVoices().catch(() => {});
+  await talk(reply);
 }
 
 async function onHeard(finalText) {
@@ -181,7 +222,7 @@ async function onHeard(finalText) {
     if (parsed.rest) {
       awaitCommand = false;
       applyOrb();
-      await send(parsed.rest);
+      await enqueueSend(parsed.rest);
     } else {
       awaitCommand = true;
       ear.textContent = "ESCUCHANDO";
@@ -192,7 +233,7 @@ async function onHeard(finalText) {
   if (awaitCommand || voiceMode === "ptt" || voiceMode === "always") {
     awaitCommand = false;
     applyOrb();
-    await send(finalText);
+    enqueueSend(finalText);
   }
 }
 
@@ -258,12 +299,14 @@ async function enableEar() {
   skipEarToggle = Date.now() + 500;
   try {
     if (!listener) {
-      showMicHint(
-        "No hay reconocimiento de voz",
-        "Este Chromium no trae SpeechRecognition. Escribe abajo; el teclado sigue."
-      );
-      if (ear) ear.textContent = "SIN STT";
-      return false;
+      listener = window.createListener({
+        onFinal: onHeard,
+        onPartial: (t, done) => {
+          const el = document.getElementById("live-words");
+          if (el) el.textContent = done && t ? "te oí: " + t : t || el.textContent;
+        },
+        onError: onListenError,
+      });
     }
     if (!(await armMic())) {
       alwaysBtn.classList.remove("on");
@@ -336,28 +379,24 @@ async function boot() {
     await fillVoices();
     addMsg("jarvis", s.greeting);
     retrySpeak = s.greeting;
-    await talk(s.greeting);
+    talk(s.greeting).catch(() => {});
   } catch (err) {
     addMsg("jarvis", "No pude iniciar el núcleo: " + err.message);
   }
 
-  if (!window.speechSupported || !window.speechSupported()) {
-    if (ear) ear.textContent = "SIN STT";
-    showMicHint(
-      "No hay reconocimiento de voz",
-      "Este Chromium no trae SpeechRecognition. Escribe abajo; el teclado sigue."
-    );
-  } else {
-    listener = window.createListener({
-      onFinal: onHeard,
-      onError: onListenError,
-    });
-  }
+  listener = window.createListener({
+    onFinal: onHeard,
+    onPartial: (t, done) => {
+      const el = document.getElementById("live-words");
+      if (el) el.textContent = done && t ? "te oí: " + t : t || "";
+    },
+    onError: onListenError,
+  });
 }
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
-  send(input.value);
+  enqueueSend(input.value);
 });
 
 attachBtn.addEventListener("click", async () => {
@@ -394,7 +433,7 @@ if (voicePick) {
 }
 
 for (const btn of document.querySelectorAll(".chips button[data-q]")) {
-  btn.addEventListener("click", () => send(btn.dataset.q));
+  btn.addEventListener("click", () => enqueueSend(btn.dataset.q));
 }
 
 alwaysBtn.addEventListener("click", async () => {
@@ -441,6 +480,21 @@ pttBtn.addEventListener("mouseleave", () => {
   }
 });
 
+window.addEventListener("error", (e) => {
+  try {
+    addMsg("jarvis", "Error en pantalla, Señor: " + ((e && e.message) || "desconocido") + ". El teclado sigue.");
+  } catch {
+    /* ignore */
+  }
+});
+window.addEventListener("unhandledrejection", (e) => {
+  try {
+    const r = e && e.reason;
+    addMsg("jarvis", "Algo falló, Señor: " + ((r && r.message) || r || "promesa") + ". Escribe otra vez.");
+  } catch {
+    /* ignore */
+  }
+});
 boot();
 window.addEventListener("pointerdown", onUserUnlock, true);
 window.addEventListener("keydown", onUserUnlock, true);

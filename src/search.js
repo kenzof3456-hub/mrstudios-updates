@@ -3,6 +3,9 @@ const https = require("https");
 const { URL } = require("url");
 const { say } = require("./voice");
 
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 function fetchText(urlString, maxBytes = 350000, hops = 0) {
   return new Promise((resolve, reject) => {
     let url;
@@ -24,8 +27,9 @@ function fetchText(urlString, maxBytes = 350000, hops = 0) {
         path: url.pathname + url.search,
         method: "GET",
         headers: {
-          "User-Agent": "Jarvis/1.0 (desktop assistant for Señor)",
+          "User-Agent": BROWSER_UA,
           Accept: "text/html,application/json;q=0.9,*/*;q=0.8",
+          "Accept-Language": "es-MX,es;q=0.9,en;q=0.8",
         },
       },
       (res) => {
@@ -45,6 +49,7 @@ function fetchText(urlString, maxBytes = 350000, hops = 0) {
           size += c.length;
           if (size > maxBytes) {
             req.destroy();
+            resolve(Buffer.concat(chunks).toString("utf8"));
             return;
           }
           chunks.push(c);
@@ -60,8 +65,9 @@ function fetchText(urlString, maxBytes = 350000, hops = 0) {
       }
     );
     req.on("error", reject);
-    req.setTimeout(10000, () => {
-      req.destroy(new Error("timeout"));
+    req.setTimeout(8000, () => {
+      req.destroy();
+      reject(new Error("timeout"));
     });
     req.end();
   });
@@ -94,6 +100,8 @@ function cleanUrl(href) {
     const u = new URL(href, "https://html.duckduckgo.com/");
     const uddg = u.searchParams.get("uddg");
     if (uddg) return decodeURIComponent(uddg);
+    if (u.protocol === "http:" || u.protocol === "https:") return u.toString();
+    if (String(href).startsWith("//")) return "https:" + href;
     return u.toString();
   } catch {
     return href;
@@ -113,6 +121,14 @@ function readable(html) {
     .slice(0, 1800);
 }
 
+function topicQuery(raw) {
+  return String(raw || "")
+    .replace(/[¿?¡!]+/g, " ")
+    .replace(/^(qué|que|what|who|quién|quien)\s+(es|is|era|was|son|are)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function parseDdg(html, limit) {
   const results = [];
   const re =
@@ -125,60 +141,167 @@ function parseDdg(html, limit) {
       snippet: decodeEntities(m[3].replace(/<[^>]+>/g, "")).trim(),
     });
   }
-  if (results.length === 0) {
-    const loose =
-      /uddg=([^&"]+)[\s\S]{0,200}?class="result__a"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)</gi;
-    let n;
-    while ((n = loose.exec(html)) && results.length < limit) {
-      results.push({
-        url: decodeURIComponent(n[1]),
-        title: decodeEntities(n[2].replace(/<[^>]+>/g, "")).trim(),
-        snippet: decodeEntities(n[3].replace(/<[^>]+>/g, "")).trim(),
-      });
-    }
-  }
   return results.filter((r) => r.url && /^https?:/i.test(r.url) && !/duckduckgo\.com/i.test(r.url));
 }
 
-async function ddgQuery(query, limit = 8) {
-  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+function parseDdgLite(html, limit) {
+  const results = [];
+  const re =
+    /href="([^"]*uddg=[^"]+)"[^>]*class=['"]result-link['"][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = re.exec(html)) && results.length < limit) {
+    const url = cleanUrl(decodeEntities(m[1].replace(/&amp;/g, "&")));
+    if (!url || /duckduckgo\.com/i.test(url)) continue;
+    results.push({
+      url,
+      title: decodeEntities(m[2].replace(/<[^>]+>/g, "")).trim(),
+      snippet: "",
+    });
+  }
+  return results;
+}
+
+function pushHit(hits, seen, hit) {
+  if (!hit || !hit.url || !/^https?:/i.test(hit.url)) return;
+  const key = hit.url.replace(/#.*$/, "").replace(/\/$/, "");
+  if (seen.has(key)) return;
+  seen.add(key);
+  hits.push({
+    url: hit.url,
+    title: hit.title || "",
+    snippet: hit.snippet || "",
+    body: hit.body || "",
+  });
+}
+
+async function ddgHtml(query, limit) {
   try {
-    const html = await fetchText(url);
+    const html = await fetchText(
+      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
+    );
+    if (/captcha|anomaly-modal|sorry/i.test(html) && !/result__a/.test(html)) return [];
     return parseDdg(html, limit);
   } catch {
     return [];
   }
 }
 
-async function searchWeb(query, opts = {}) {
-  const deep = opts.deep !== false;
-  const variants = [String(query || "").trim()].filter(Boolean);
-  if (deep && variants[0]) {
-    variants.push(variants[0] + " wikipedia");
-    variants.push(variants[0] + " documentation overview");
+async function ddgLite(query, limit) {
+  try {
+    const html = await fetchText(`https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`);
+    return parseDdgLite(html, limit);
+  } catch {
+    return [];
   }
-  const seen = new Set();
+}
+
+async function ddgInstant(query) {
+  const json = await fetchJson(
+    `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&no_redirect=1&skip_disambig=1`
+  );
+  if (!json) return [];
   const hits = [];
-  for (const v of variants) {
-    const part = await ddgQuery(v, 8);
-    for (const h of part) {
-      const key = h.url.replace(/#.*$/, "").replace(/\/$/, "");
-      if (seen.has(key)) continue;
-      seen.add(key);
-      hits.push(h);
+  if (json.AbstractText && json.AbstractURL) {
+    hits.push({
+      title: json.Heading || query,
+      snippet: json.AbstractText,
+      url: json.AbstractURL,
+      body: json.AbstractText,
+    });
+  }
+  const related = Array.isArray(json.RelatedTopics) ? json.RelatedTopics : [];
+  for (const t of related) {
+    if (t && t.Text && t.FirstURL) {
+      hits.push({ title: t.Text.split(" - ")[0], snippet: t.Text, url: t.FirstURL });
+    }
+    if (t && Array.isArray(t.Topics)) {
+      for (const s of t.Topics.slice(0, 3)) {
+        if (s && s.Text && s.FirstURL) {
+          hits.push({ title: s.Text.split(" - ")[0], snippet: s.Text, url: s.FirstURL });
+        }
+      }
     }
   }
-  const pages = Math.min(opts.pages || 4, hits.length);
-  await Promise.all(
-    hits.slice(0, pages).map(async (h) => {
-      try {
-        const html = await fetchText(h.url);
-        h.body = readable(html);
-      } catch {
-        h.body = "";
-      }
-    })
+  return hits;
+}
+
+async function wikiSummary(title, lang) {
+  const json = await fetchJson(
+    `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
   );
+  if (!json || json.type === "disambiguation") {
+    if (json && json.extract && json.content_urls && json.content_urls.desktop) {
+      return {
+        title: json.title || title,
+        snippet: json.extract,
+        body: json.extract,
+        url: json.content_urls.desktop.page,
+      };
+    }
+    return null;
+  }
+  const url =
+    (json.content_urls && json.content_urls.desktop && json.content_urls.desktop.page) ||
+    json.content_urls?.mobile?.page ||
+    `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+  if (!json.extract) return null;
+  return { title: json.title || title, snippet: json.extract, body: json.extract, url };
+}
+
+async function wikiSearch(query, lang) {
+  const topic = topicQuery(query) || query;
+  const open = await fetchJson(
+    `https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(
+      topic
+    )}&limit=5&namespace=0&format=json`
+  );
+  const hits = [];
+  if (Array.isArray(open) && Array.isArray(open[1])) {
+    for (let i = 0; i < open[1].length; i++) {
+      hits.push({
+        title: open[1][i],
+        snippet: (open[2] && open[2][i]) || "",
+        url: (open[3] && open[3][i]) || "",
+      });
+    }
+  }
+  const summary = await wikiSummary(topic.replace(/\s+/g, "_"), lang);
+  if (summary) hits.unshift(summary);
+  return hits.filter((h) => h.url);
+}
+
+async function searchWeb(query, opts = {}) {
+  const { withTimeout } = require("./timeout");
+  const q = String(query || "").trim();
+  const topic = topicQuery(q) || q;
+  const seen = new Set();
+  const hits = [];
+
+  const work = (async () => {
+    const batches = await Promise.all([
+      ddgHtml(q, 8),
+      ddgLite(q, 8),
+      ddgInstant(topic),
+      wikiSearch(topic, "es"),
+      wikiSearch(topic, "en"),
+    ]);
+    for (const part of batches) {
+      for (const h of part) pushHit(hits, seen, h);
+    }
+    const pages = Math.min(opts.pages || 3, hits.length);
+    await Promise.all(
+      hits.slice(0, pages).map(async (h) => {
+        if (h.body && h.body.length > 80) return;
+        try {
+          const html = await fetchText(h.url);
+          h.body = readable(html);
+        } catch {
+          h.body = h.body || "";
+        }
+      })
+    );
+  })();
+  await withTimeout(work, 10000, null);
   return hits.slice(0, 8);
 }
 
@@ -193,15 +316,15 @@ function formatSearchAnswer(query, results, lang = "es") {
   const blobs = results.flatMap((r) =>
     [r.title, r.snippet, r.body]
       .map((s) => String(s || "").replace(/\s+/g, " ").trim())
-      .filter((s) => s.length > 24)
+      .filter((s) => s.length > 8)
   );
   const joined = blobs.join(" ");
   const sentences = joined
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
-    .filter((s, i, arr) => s.length > 32 && arr.indexOf(s) === i)
+    .filter((s, i, arr) => s.length > 20 && arr.indexOf(s) === i)
     .slice(0, 10);
-  const body = sentences.length >= 2 ? sentences.join(" ") : blobs.slice(0, 5).join(" ");
+  const body = sentences.length >= 1 ? sentences.join(" ") : blobs.slice(0, 5).join(" ");
   const cites = results
     .slice(0, 5)
     .map((r) => r.url)
@@ -235,4 +358,7 @@ module.exports = {
   readable,
   packWebForLlm,
   cleanUrl,
+  topicQuery,
+  parseDdg,
+  parseDdgLite,
 };

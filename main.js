@@ -15,6 +15,16 @@ const { JARVIS_TTS } = require("./src/jarvis-voice");
 const { catalog, defaultVoiceChoice } = require("./src/voices");
 const { localeFor, ttsVoiceFor } = require("./src/lang");
 
+const { whisperTranscribe, windowsDictation } = require("./src/stt");
+const { withTimeout } = require("./src/timeout");
+
+process.on("uncaughtException", (err) => {
+  console.error("uncaught", err && err.stack ? err.stack : err);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("unhandledRejection", err);
+});
+
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.commandLine.appendSwitch("disable-features", "PreloadMediaEngagementData");
 
@@ -216,20 +226,56 @@ app.whenReady().then(() => {
   ipcMain.handle("jarvis:chat", async (_evt, payload) => {
     const text = String(payload?.text || "");
     const history = Array.isArray(payload?.history) ? payload.history : [];
-    return handleTurn({
-      text,
-      history,
-      profile,
-      llm,
-      memory,
-      sight,
-      messenger,
-      useAttach: Boolean(payload?.useAttach),
-      setVoice,
-      setLanguage,
-      extraVoices: await extraVoices(),
-      craftDir: path.join(userData, "craft"),
-    });
+    try {
+      const result = await withTimeout(
+        handleTurn({
+          text,
+          history,
+          profile,
+          llm,
+          memory,
+          sight,
+          messenger,
+          useAttach: Boolean(payload?.useAttach),
+          setVoice,
+          setLanguage,
+          extraVoices: await extraVoices(),
+          craftDir: path.join(userData, "craft"),
+        }),
+        14000,
+        { reply: "Tardé de más, Señor. Prueba otra vez o escribe.", intent: "timeout" }
+      );
+      if (result && result.reply) return result;
+      return { reply: "No encontré qué decir, Señor. Escribe otra vez.", intent: "empty" };
+    } catch (err) {
+      return { reply: "Fallo interno, Señor: " + (err.message || "error"), intent: "error" };
+    }
+  });
+
+  ipcMain.handle("jarvis:transcribe", async (_e, payload) => {
+    try {
+      return await withTimeout(
+        whisperTranscribe({
+          apiKey: llm.apiKey,
+          baseUrl: llm.baseUrl,
+          audio: payload && payload.audio,
+          mime: payload && payload.mime,
+          language: (payload && payload.language) || "es",
+        }),
+        12000,
+        { ok: false, reason: "timeout" }
+      );
+    } catch (err) {
+      return { ok: false, reason: err.message || "transcribe" };
+    }
+  });
+
+  ipcMain.handle("jarvis:windows-listen", async (_e, seconds) => {
+    try {
+      return await windowsDictation(seconds || 8);
+    } catch (err) {
+      return { ok: false, reason: err.message || "windows-stt" };
+    }
   });
 
   ipcMain.handle("jarvis:wake-line", () => pickWakeLine(profile.language || "es"));

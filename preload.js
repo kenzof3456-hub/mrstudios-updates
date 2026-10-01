@@ -16,4 +16,7 @@ contextBridge.exposeInMainWorld("jarvis", {
   parseWake: (text) => ipcRenderer.invoke("jarvis:parse-wake", text),
   speakPlan: (text) => ipcRenderer.invoke("jarvis:speak", text),
   sapi: (text, voice) => ipcRenderer.invoke("jarvis:sapi", { text, voice }),
+  transcribe: (audio, mime, language) =>
+    ipcRenderer.invoke("jarvis:transcribe", { audio, mime, language }),
+  windowsListen: (seconds) => ipcRenderer.invoke("jarvis:windows-listen", seconds),
 });

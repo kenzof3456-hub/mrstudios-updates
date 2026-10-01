@@ -55,4 +55,22 @@ assert.strictEqual(parsePlan('{"action":"answer","query":"quién es"}').need_web
 assert.strictEqual(parsePlan('{"action":"datetime"}').need_web, false);
 assert.strictEqual(parsePlan('{"action":"search","query":"x"}').need_web, true);
 
-console.log("search ok");
+const { topicQuery, searchWeb } = require("./search");
+assert.strictEqual(topicQuery("qué es honda"), "honda");
+assert.strictEqual(topicQuery("qué es Honda"), "Honda");
+
+(async () => {
+  const hits = await searchWeb("honda", { pages: 2 });
+  assert.ok(hits.length > 0, "honda should return hits");
+  const ans = formatSearchAnswer("honda", hits, "es");
+  assert.doesNotMatch(ans, /nada sólido/);
+  assert.match(ans, /Honda|honda|Fuentes|wikipedia/i);
+  const hits2 = await searchWeb("qué es honda", { pages: 2 });
+  assert.ok(hits2.length > 0, "qué es honda should return hits");
+  const ans2 = formatSearchAnswer("qué es honda", hits2, "es");
+  assert.doesNotMatch(ans2, /nada sólido/);
+  console.log("search ok");
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

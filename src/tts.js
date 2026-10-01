@@ -46,7 +46,7 @@ function cloudTts({ apiKey, baseUrl, text, voice, model, speed }) {
       }
     );
     req.on("error", () => resolve(null));
-    req.setTimeout(20000, () => {
+    req.setTimeout(12000, () => {
       req.destroy();
       resolve(null);
     });
@@ -139,7 +139,7 @@ $s.Speak('${spoken.slice(0, 1500)}')
     execFile(
       "powershell.exe",
       ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-      { windowsHide: true, timeout: 25000 },
+      { windowsHide: true, timeout: 12000 },
       (err) => resolve({ ok: !err, reason: err ? err.message : "sapi" })
     );
   });
