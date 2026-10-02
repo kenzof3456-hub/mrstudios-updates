@@ -4,6 +4,14 @@ Asistente de escritorio **nativo para Windows** (Electron). No es un sitio web.
 
 Jarvis habla con **Señor** (Luis). Contesta en el **mismo idioma** que Señor (español, inglés, etc.). Tono: cálido, un toque de ingenio, sin carnaval.
 
+## Descargar
+
+Instalador de Windows, 81 971 579 bytes:
+
+https://github.com/kenzof3456-hub/mrstudios-updates/releases/download/jarvis-1.0.1/Jarvis-Setup-1.0.0.exe
+
+No bajes el `.exe` desde la vista de archivos de git. Esa página es HTML y Windows lo marca como dañado.
+
 ## Qué hace (v1)
 
 1. Chat de texto **y por voz**.
@@ -84,7 +92,7 @@ npm install
 npm run dist:win
 ```
 
-El setup queda en `dist/Jarvis-Setup-1.0.0.exe`.
+El setup queda en `dist/Jarvis-Setup-1.0.0.exe`. Para publicarlo, súbelo como asset de un GitHub Release. No lo dejes en el árbol de git.
 
 ## Variables de entorno
 
