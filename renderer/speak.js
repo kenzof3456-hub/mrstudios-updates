@@ -255,34 +255,44 @@ function playBase64Mp3(b64, onLevel) {
   });
 }
 
-async function speakOut(text, onLevel) {
+async function speakOut(text, onLevel, opts) {
   await unlockAudio();
   await waitVoices();
-  const plan = (await window.jarvis.speakPlan(text)) || {};
+  const plan =
+    (await window.jarvis.speakPlan({
+      text,
+      code: Boolean(opts && opts.code),
+      search: Boolean(opts && opts.search),
+    })) || {};
+  const spoken = (plan && plan.spoken) || text;
   if ((plan.method === "cloud" || plan.method === "edge") && plan.audio) {
     const played = await playBase64Mp3(plan.audio, onLevel);
-    if (played.ok) return { ok: true, method: plan.method };
+    if (played.ok) return { ok: true, method: plan.method, spoken };
   }
   if (plan.method === "browser") {
-    const local = await speakBrowser(text, onLevel, plan);
-    if (local.ok) return local;
+    const local = await speakBrowser(spoken, onLevel, plan);
+    if (local.ok) return { ...local, spoken };
   }
   if (window.__jarvisIsWindows || plan.method === "local") {
-    const stop = fakeEnvelope(text, onLevel);
-    const sapi = await window.jarvis.sapi(text, plan.sapiVoice || "");
+    const stop = fakeEnvelope(spoken, onLevel);
+    const sapi = await window.jarvis.sapi(spoken, plan.sapiVoice || "", {
+      code: Boolean(opts && opts.code),
+      search: Boolean(opts && opts.search),
+    });
     stop();
-    if (sapi && sapi.ok) return { ok: true, method: "sapi" };
+    if (sapi && sapi.ok) return { ok: true, method: "sapi", spoken };
     if (sapi && sapi.reason && sapi.reason !== "not-windows") {
-      const local = await speakBrowser(text, onLevel, plan);
-      if (local.ok) return local;
-      return { ok: false, method: "none", error: "SAPI: " + sapi.reason };
+      const local = await speakBrowser(spoken, onLevel, plan);
+      if (local.ok) return { ...local, spoken };
+      return { ok: false, method: "none", error: "SAPI: " + sapi.reason, spoken };
     }
   }
-  const local = await speakBrowser(text, onLevel, plan);
-  if (local.ok) return local;
+  const local = await speakBrowser(spoken, onLevel, plan);
+  if (local.ok) return { ...local, spoken };
   return {
     ok: false,
     method: "none",
+    spoken,
     error: local.error || "ni Edge, ni OpenAI, ni SAPI, ni Chromium",
   };
 }

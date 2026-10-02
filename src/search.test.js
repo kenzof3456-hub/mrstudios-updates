@@ -1,5 +1,5 @@
 const assert = require("assert");
-const { readable, cleanUrl, formatSearchAnswer, packWebForLlm } = require("./search");
+const { readable, cleanUrl, formatSearchAnswer, packWebForLlm, presentSearch } = require("./search");
 const { parsePlan } = require("./plan");
 
 assert.strictEqual(
@@ -36,13 +36,29 @@ const combined = formatSearchAnswer(
   ],
   "en"
 );
-assert.match(combined, /several public pages/);
 assert.match(combined, /Sources:/);
 assert.match(combined, /docs\.example\/tts/);
 assert.match(combined, /wiki\.example\/speech/);
-assert.match(combined, /guide\.example\/sapi/);
+assert.doesNotMatch(combined, /guide\.example\/sapi/);
 assert.match(combined, /autoplay|voiceschanged|Volume/);
-assert.ok(combined.length > 160);
+assert.ok((combined.match(/https?:\/\//g) || []).length <= 2);
+assert.ok(combined.length > 80);
+assert.ok(combined.length < 900);
+
+const dump =
+  "Uno es un hecho claro. Dos es otro hecho. Tres suma contexto. Cuatro cierra el dato. Cinco sobra y no debe salir. https://a.example/1 https://b.example/2 https://c.example/3";
+const shown = presentSearch(dump, "es", 4, 2);
+assert.match(shown, /Uno es un hecho/);
+assert.match(shown, /Cuatro cierra/);
+assert.doesNotMatch(shown, /Cinco sobra/);
+assert.match(shown, /a\.example\/1/);
+assert.match(shown, /b\.example\/2/);
+assert.doesNotMatch(shown, /c\.example/);
+const said = presentSearch(dump, "es", 2, 0);
+assert.match(said, /Uno es un hecho/);
+assert.match(said, /Dos es otro hecho/);
+assert.doesNotMatch(said, /Tres suma/);
+assert.doesNotMatch(said, /https?:/);
 
 const packed = packWebForLlm([
   { title: "A", snippet: "short", body: "page body from first result", url: "https://a.example/" },

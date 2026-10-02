@@ -29,12 +29,72 @@ function looksLikeHello(raw) {
   return /^(hola|hello|hi)$/.test(core);
 }
 
+function looksLikeHearing(raw) {
+  const t = normalize(raw)
+    .replace(/\b(oye|hey|ok|okay|eh|jarvis|senor|por favor)\b/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /^(me escuchas|me oyes|estas ahi|me estas escuchando|me estas oyendo|can you hear me|are you there)$/.test(
+    t
+  );
+}
+
+function isJunkStt(raw) {
+  const t = normalize(raw)
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return true;
+  if (looksLikeHello(raw) || looksLikeHearing(raw)) return false;
+  const tokens = t.split(" ").filter(Boolean);
+  const letters = t.replace(/[^a-z0-9]/g, "");
+  if (letters.length <= 1) return true;
+  if (tokens.length && tokens.every((tok) => tok.length === 1)) return true;
+  if (/^(la |el |una |the )?letra [a-z]$/.test(t)) return true;
+  if (/^(que es |what is )?(la |el |una |the )?(letra )?[a-z]$/.test(t)) return true;
+  if (/\b(abecedario|alphabet)\b/.test(t) && letters.length < 48) return true;
+  const filler = new Set([
+    "eh",
+    "um",
+    "uh",
+    "ah",
+    "mm",
+    "mmm",
+    "hmm",
+    "ok",
+    "okay",
+    "este",
+    "pues",
+    "y",
+    "de",
+    "la",
+    "el",
+    "en",
+    "un",
+    "una",
+    "que",
+    "the",
+    "an",
+    "lo",
+    "es",
+    "a",
+  ]);
+  if (tokens.length <= 3 && tokens.every((tok) => filler.has(tok) || tok.length === 1)) return true;
+  if (letters.length < 4 && tokens.length === 1) return true;
+  return false;
+}
+
 function detectCore(raw) {
   const t = normalize(raw);
   if (!t) return { type: "empty" };
 
   if (looksLikeHello(raw)) {
     return { type: "hello" };
+  }
+
+  if (looksLikeHearing(raw)) {
+    return { type: "hearing" };
   }
 
   if (
@@ -210,4 +270,11 @@ function detectIntent(raw) {
   return inner;
 }
 
-module.exports = { detectIntent, detectCore, normalize, looksLikeHello };
+module.exports = {
+  detectIntent,
+  detectCore,
+  normalize,
+  looksLikeHello,
+  looksLikeHearing,
+  isJunkStt,
+};

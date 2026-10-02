@@ -1,15 +1,15 @@
 const fs = require("fs");
 const path = require("path");
-const { detectIntent, looksLikeHello } = require("./intents");
+const { detectIntent, looksLikeHello, isJunkStt } = require("./intents");
 const { describeProfile, address } = require("./profile");
 const { formatNow } = require("./time");
-const { openApp, closeApp, isWindows } = require("./windows-apps");
+const { openApp, closeApp } = require("./windows-apps");
 const { enableDiscordCamera } = require("./discord");
-const { searchWeb, formatSearchAnswer, packWebForLlm } = require("./search");
+const { searchWeb, formatSearchAnswer, packWebForLlm, presentSearch } = require("./search");
 const { chatWithLlm } = require("./llm");
 const { say, aside } = require("./voice");
 const { parseWake } = require("./wake");
-const { pickWakeLine } = require("./spoken");
+const { pickWakeLine, capSpoken, isStatusDump, bootLine } = require("./spoken");
 const { resolveVoice, catalog, formatVoiceLine } = require("./voices");
 const { detectLanguage, languageName, localeFor, tx } = require("./lang");
 const {
@@ -40,10 +40,10 @@ function systemPrompt(profile, memory, lang) {
     `Always address him as ${who}. Never any other nickname. Use Luis only if he asks his real name.`,
     `Reply in ${langName}. Match his language exactly.`,
     `Tone: lively, not extra. Warm, composed, a spark of wit when it earns its place — never a joke every line, never a canned status dump.`,
-    `Chat is the default. Have a normal conversation: small talk, follow-ups, opinions, remember the last turns. Do not treat every line as a command or an intent.`,
+    `Chat is the default. Express yourself freely: opinions, follow-ups, personality. Remember the recent turns and continue them. Not command-only. Lively, not a dump.`,
     `Think, then act. Use tools (web search, legal TV, screen/attach, craft files, Windows apps, send-message, memory, clock) only when this turn needs them.`,
     `When he asks to make code, mods, or 3D, write files to disk (original work only). When he says hazme esto / házmelo / do this, execute the last or stated safe action.`,
-    `Use his memory when it helps. If you do not know, search the web thoroughly (several pages), combine them, and cite 2–5 short URLs. Legal TV only — no pirate streams. Refuse OS wipes. Ask once before deleting files or installing unknowns.`,
+    `Use his memory when it helps. If you do not know, search the web thoroughly (several pages), then summarize in 2 to 4 short sentences in his language: useful facts first, then at most 2 source links. Never paste raw page text. Legal TV only — no pirate streams. Refuse OS wipes. Ask once before deleting files or installing unknowns.`,
     `${who}'s memory:\n${memory.contextBlock()}`,
     `Clock (for you, not a status dump): ${formatNow(localeFor(lang), lang).text}.`,
   ].join(" ");
@@ -65,6 +65,8 @@ function think(llm, opts) {
 
 const PLAN_LOCKED = new Set([
   "hello",
+  "hearing",
+  "repeat",
   "empty",
   "agency_refuse",
   "agency_ask",
@@ -123,7 +125,29 @@ async function speakThought(llm, profile, memory, lang, brief, facts, history) {
   return text && String(text).trim();
 }
 
-async function handleTurn({
+function withSpeech(result, profile) {
+  if (!result) return result;
+  const lang = result.language || (profile && profile.language) || "es";
+  const who = address(profile);
+  if (result.reply && isStatusDump(result.reply)) {
+    const line = bootLine(lang, who);
+    return { ...result, reply: line, speak: line };
+  }
+  if (result.speak) return result;
+  const code = result.intent === "craft" || result.intent === "save_code";
+  const search = Boolean(result.searched) || result.intent === "tv";
+  return {
+    ...result,
+    speak: capSpoken(result.reply || "", { code, search, lang, who }),
+  };
+}
+
+async function handleTurn(args) {
+  const result = await handleTurnBody(args);
+  return withSpeech(result, args && args.profile);
+}
+
+async function handleTurnBody({
   text,
   history,
   profile,
@@ -136,6 +160,7 @@ async function handleTurn({
   extraVoices,
   setLanguage,
   craftDir,
+  lowConfidence,
 }) {
   const parsed = parseWake(text);
   const work = parsed.woke ? parsed.rest : text;
@@ -155,6 +180,15 @@ async function handleTurn({
   const lang = detectLanguage(work || text, profile.language || "es");
   if (typeof setLanguage === "function") setLanguage(lang);
   if (profile) profile.language = lang;
+
+  if (lowConfidence) {
+    return {
+      reply: tx(lang, "¿puedes repetir?", "Could you repeat that?"),
+      intent: "repeat",
+      searched: false,
+      language: lang,
+    };
+  }
 
   if (parsed.woke && !work) {
     return { reply: pickWakeLine(lang), intent: "wake", spokeWake: true, language: lang };
@@ -197,6 +231,24 @@ async function handleTurn({
     return {
       reply: say(tx(lang, "Te escucho.", "I'm listening.")),
       intent: intent.type,
+      language: lang,
+    };
+  }
+
+  if (intent.type === "hearing") {
+    return {
+      reply: lang === "en" ? "Yes, Señor, I hear you." : "Sí, Señor, te escucho.",
+      intent: "hearing",
+      searched: false,
+      language: lang,
+    };
+  }
+
+  if (isJunkStt(work || text) && (intent.type === "question" || intent.type === "empty")) {
+    return {
+      reply: tx(lang, "¿puedes repetir?", "Could you repeat that?"),
+      intent: "repeat",
+      searched: false,
       language: lang,
     };
   }
@@ -604,16 +656,19 @@ async function handleTurn({
           content:
             `${address(profile)}: ${intent.query}\n\n` +
             packed +
-            "\n\nWeb (several pages, combine extras; cite 2–5 URLs):\n" +
+            "\n\nWeb notes for you only. Summarize in 2 to 4 short sentences in his language, facts first, then at most 2 URLs. Do not paste page text.\n" +
             (pack.web && pack.web.length ? packWebForLlm(pack.web) : "(none)"),
         },
       ],
     });
+    const rawTv = llmText || packed;
     return {
-      reply: llmText || packed,
+      reply: presentSearch(rawTv, lang, 4, 2),
+      speak: presentSearch(rawTv, lang, 2, 0),
       intent: intent.type,
       language: lang,
       llm: Boolean(llmText),
+      searched: Boolean(pack.web && pack.web.length),
     };
   }
 
@@ -642,44 +697,42 @@ async function handleTurn({
         content:
           `${address(profile)}: ${q}\n\n` +
           (useWeb
-            ? `Web (several pages, combine; cite 2–5 URLs):\n` + packWebForLlm(results)
-            : "Conversation turn. Use recent history, memory, and judgment. No web this turn unless you already know.") +
-          `\n\nReply in ${languageName(lang)} as a continuing chat. Helpful, a little wit if it fits. No status dump.` +
-          (useWeb ? " Combine the pages. Cite 2-5 URLs." : ""),
+            ? `Web notes for you only (do not read them aloud as a dump):\n` + packWebForLlm(results)
+            : "Conversation turn. Use recent history, memory, and judgment. Share a short opinion or follow-up when it fits. No web this turn.") +
+          `\n\nReply in ${languageName(lang)} as a continuing chat with ${address(profile)}. Lively, not a dump. No status list.` +
+          (useWeb
+            ? " Summarize in 2 to 4 short sentences: useful facts first, then at most 2 URLs. Do not paste raw page text."
+            : " Two or three short sentences unless he asked for code."),
       },
     ],
   });
 
+  const rawReply = llmText || fallback;
+  if (useWeb) {
+    return {
+      reply: presentSearch(rawReply, lang, 4, 2),
+      speak: presentSearch(rawReply, lang, 2, 0),
+      intent: "question",
+      searched: results.length > 0,
+      sources: results.slice(0, 2).map((r) => r.url),
+      llm: Boolean(llmText),
+      language: lang,
+    };
+  }
+
   return {
-    reply: llmText || fallback,
+    reply: rawReply,
     intent: "question",
-    searched: useWeb && results.length > 0,
-    sources: results.slice(0, 5).map((r) => r.url),
+    searched: false,
+    sources: [],
     llm: Boolean(llmText),
+    language: lang,
   };
 }
 
-function greeting(profile, memory) {
+function greeting(profile) {
   const lang = (profile && profile.language) || "es";
-  const { weekday, date, time, timeZone } = formatNow(localeFor(lang), lang);
-  const win = isWindows
-    ? tx(lang, "Apps y Discord listos.", "Apps and Discord are ready.")
-    : tx(
-        lang,
-        "Fuera de Windows: charla, hora, memoria y búsqueda sí. Apps, en tu PC.",
-        "Not on Windows: chat, time, memory, and search work. Apps wait for your PC."
-      );
-  const facts = memory && memory.list ? memory.list() : [];
-  const wink = facts.length
-    ? tx(lang, `${facts.length} notas guardadas.`, `${facts.length} notes saved.`)
-    : "";
-  return say(
-    tx(lang, `En línea, ${address(profile)}.`, `Online, ${address(profile)}.`),
-    `${time}. ${weekday}, ${date} (${timeZone}).`,
-    tx(lang, "Adjuntar, mensajes, voces, TV legal, código. Di «házmelo» y lo ejecuto.", "Attach, messages, voices, legal TV, code. Say “do this” and I execute."),
-    win,
-    wink
-  );
+  return bootLine(lang, address(profile));
 }
 
 module.exports = { handleTurn, greeting, systemPrompt, hasThinker, think };

@@ -2,14 +2,16 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen, dialog, nativeImage } = require("electron");
-const { loadProfile, saveProfile } = require("./src/profile");
+const { loadProfile, saveProfile, address } = require("./src/profile");
 const { createMemory } = require("./src/memory");
 const { createMessenger } = require("./src/messenger");
 const { createSight } = require("./src/sight");
 const { handleTurn, greeting } = require("./src/brain");
 const { isWindows } = require("./src/windows-apps");
 const { parseWake } = require("./src/wake");
-const { pickWakeLine } = require("./src/spoken");
+const { pickWakeLine, forSpeech, isEcho } = require("./src/spoken");
+const { isJunkStt, looksLikeHearing } = require("./src/intents");
+const { loadSecrets, saveApiKey } = require("./src/secrets");
 const { cloudTts, sapiSpeak, edgeTts, listSapiVoices } = require("./src/tts");
 const { JARVIS_TTS } = require("./src/jarvis-voice");
 const { catalog, defaultVoiceChoice } = require("./src/voices");
@@ -101,8 +103,9 @@ app.whenReady().then(() => {
     saveProfile(userData, profile);
   }
   const memory = createMemory(path.join(userData, "memory.json"));
+  const savedKey = loadSecrets(userData).openaiApiKey;
   const llm = {
-    apiKey: process.env.OPENAI_API_KEY || "",
+    apiKey: savedKey || process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
     model: process.env.OPENAI_MODEL || "gpt-4o-mini",
     visionModel: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini",
@@ -114,7 +117,7 @@ app.whenReady().then(() => {
   });
   const messenger = createMessenger({ memory });
   const ttsCfg = {
-    apiKey: process.env.OPENAI_API_KEY || "",
+    apiKey: savedKey || process.env.OPENAI_API_KEY || "",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
     voice: process.env.OPENAI_TTS_VOICE || JARVIS_TTS.openaiVoice,
     model: process.env.OPENAI_TTS_MODEL || JARVIS_TTS.openaiModel,
@@ -140,6 +143,40 @@ app.whenReady().then(() => {
     const sapi = await listSapiVoices();
     return [...sapi, ...browserVoices];
   }
+
+  function speechOpts(extra) {
+    return {
+      code: Boolean(extra && extra.code),
+      search: Boolean(extra && extra.search),
+      lang: profile.language || "es",
+      who: address(profile),
+    };
+  }
+
+  ipcMain.handle("jarvis:set-api-key", (_e, key) => {
+    const saved = saveApiKey(userData, key);
+    const next = saved.hasKey ? String(key || "").trim() : process.env.OPENAI_API_KEY || "";
+    llm.apiKey = next;
+    ttsCfg.apiKey = next;
+    return { ok: true, hasLlm: Boolean(llm.apiKey) };
+  });
+
+  ipcMain.handle("jarvis:set-mic", (_e, deviceId) => {
+    const micDeviceId = String(deviceId || "");
+    profile = { ...profile, micDeviceId };
+    saveProfile(userData, profile);
+    return { ok: true, micDeviceId };
+  });
+
+  ipcMain.handle("jarvis:ear-check", (_e, payload) => {
+    const text = String((payload && payload.text) || "");
+    const last = String((payload && payload.last) || "");
+    return {
+      echo: isEcho(text, last),
+      junk: isJunkStt(text),
+      hearing: looksLikeHearing(text),
+    };
+  });
 
   ipcMain.handle("jarvis:status", () => ({
     profile,
@@ -237,6 +274,7 @@ app.whenReady().then(() => {
           sight,
           messenger,
           useAttach: Boolean(payload?.useAttach),
+          lowConfidence: Boolean(payload?.lowConfidence),
           setVoice,
           setLanguage,
           extraVoices: await extraVoices(),
@@ -282,33 +320,37 @@ app.whenReady().then(() => {
 
   ipcMain.handle("jarvis:parse-wake", (_e, text) => parseWake(text));
 
-  ipcMain.handle("jarvis:speak", async (_e, text) => {
-    const spoken = String(text || "");
+  ipcMain.handle("jarvis:speak", async (_e, payload) => {
+    const raw = typeof payload === "string" ? payload : payload?.text || "";
+    const opts = speechOpts(typeof payload === "object" ? payload : null);
+    const spoken = forSpeech(raw, opts);
     const choice = ttsVoiceFor(profile);
     if (choice.engine === "openai") {
-      const audio = await cloudTts({ ...ttsCfg, text: spoken, voice: choice.id });
-      if (audio) return { method: "cloud", audio, voice: choice.id };
+      const audio = await cloudTts({ ...ttsCfg, text: spoken, voice: choice.id, speech: { code: true } });
+      if (audio) return { method: "cloud", audio, voice: choice.id, spoken };
     }
     if (choice.engine === "browser") {
-      return { method: "browser", voice: choice.id, lang: choice.lang || "es-ES" };
+      return { method: "browser", voice: choice.id, lang: choice.lang || "es-ES", spoken };
     }
     if (choice.engine === "sapi") {
-      return { method: "local", sapiVoice: choice.id };
+      return { method: "local", sapiVoice: choice.id, spoken };
     }
     const preferred = choice.engine === "edge" ? choice.id : JARVIS_TTS.edgeVoices[0];
-    const edge = await edgeTts(spoken, preferred);
+    const edge = await edgeTts(spoken, preferred, { code: true });
     if (edge && edge.audio) {
-      return { method: "edge", audio: edge.audio, voice: edge.voice };
+      return { method: "edge", audio: edge.audio, voice: edge.voice, spoken };
     }
-    const audio = await cloudTts({ ...ttsCfg, text: spoken, voice: ttsCfg.voice });
-    if (audio) return { method: "cloud", audio, voice: ttsCfg.voice };
-    return { method: "local", sapiVoice: choice.engine === "sapi" ? choice.id : "" };
+    const audio = await cloudTts({ ...ttsCfg, text: spoken, voice: ttsCfg.voice, speech: { code: true } });
+    if (audio) return { method: "cloud", audio, voice: ttsCfg.voice, spoken };
+    return { method: "local", sapiVoice: choice.engine === "sapi" ? choice.id : "", spoken };
   });
 
   ipcMain.handle("jarvis:sapi", async (_e, payload) => {
     const text = typeof payload === "string" ? payload : payload?.text || "";
     const voiceName = typeof payload === "object" ? payload?.voice : "";
-    return sapiSpeak(text, voiceName);
+    const opts = speechOpts(typeof payload === "object" ? payload : null);
+    const spoken = forSpeech(text, opts);
+    return sapiSpeak(spoken, voiceName, { code: true });
   });
 
   createWindow();

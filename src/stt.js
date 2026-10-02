@@ -2,6 +2,32 @@ const https = require("https");
 const { URL } = require("url");
 const { execFile } = require("child_process");
 
+function whisperConfidence(json) {
+  const segs = json && Array.isArray(json.segments) ? json.segments : [];
+  let logsum = 0;
+  let n = 0;
+  for (const s of segs) {
+    if (s && typeof s.avg_logprob === "number") {
+      logsum += s.avg_logprob;
+      n += 1;
+    }
+  }
+  return n ? logsum / n : null;
+}
+
+function whisperLow(json) {
+  const segs = json && Array.isArray(json.segments) ? json.segments : [];
+  if (!segs.length) return false;
+  let noSpeech = 0;
+  for (const s of segs) {
+    if (s && typeof s.no_speech_prob === "number") noSpeech = Math.max(noSpeech, s.no_speech_prob);
+  }
+  const avg = whisperConfidence(json);
+  if (noSpeech >= 0.6) return true;
+  if (avg != null && avg <= -1.05) return true;
+  return false;
+}
+
 function whisperTranscribe({ apiKey, baseUrl, audio, mime, filename, language }) {
   if (!apiKey || !audio || !audio.length) {
     return Promise.resolve({ ok: false, reason: "no-audio" });
@@ -16,6 +42,7 @@ function whisperTranscribe({ apiKey, baseUrl, audio, mime, filename, language })
   const head =
     `--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n` +
     `--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${lang}\r\n` +
+    `--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\nverbose_json\r\n` +
     `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: ${type}\r\n\r\n`;
   const tail = `\r\n--${boundary}--\r\n`;
   const body = Buffer.concat([Buffer.from(head, "utf8"), buf, Buffer.from(tail, "utf8")]);
@@ -45,7 +72,14 @@ function whisperTranscribe({ apiKey, baseUrl, audio, mime, filename, language })
           try {
             const json = JSON.parse(raw);
             const text = String(json.text || "").trim();
-            resolve({ ok: Boolean(text), text, reason: text ? "whisper" : "empty" });
+            const low = whisperLow(json);
+            resolve({
+              ok: Boolean(text),
+              text,
+              low,
+              confidence: whisperConfidence(json),
+              reason: text ? "whisper" : "empty",
+            });
           } catch {
             resolve({ ok: false, reason: "whisper-parse" });
           }
@@ -97,4 +131,4 @@ if ($r -and $r.Text) { $r.Text } else { '' }
   });
 }
 
-module.exports = { whisperTranscribe, windowsDictation };
+module.exports = { whisperTranscribe, windowsDictation, whisperLow, whisperConfidence };

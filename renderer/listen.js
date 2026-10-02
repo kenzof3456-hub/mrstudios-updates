@@ -54,7 +54,22 @@ function createListener({ onFinal, onPartial, onError }) {
       window.jarvis.transcribe(b64, blob.type || "audio/webm", lang),
       new Promise((r) => setTimeout(() => r({ ok: false, reason: "timeout" }), 12000)),
     ]);
-    return res && res.ok && res.text ? String(res.text).trim() : "";
+    if (!res || !res.ok || !res.text) return null;
+    return { text: String(res.text).trim(), low: Boolean(res.low) };
+  }
+
+  function audioConstraint() {
+    const id = window.__jarvisMicId || "";
+    return id ? { deviceId: { exact: id } } : true;
+  }
+
+  async function openMic() {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: audioConstraint() });
+    } catch (err) {
+      if (!window.__jarvisMicId) throw err;
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    }
   }
 
   function pickMime() {
@@ -107,13 +122,15 @@ function createListener({ onFinal, onPartial, onError }) {
           });
           const blob = new Blob(chunks, { type: r.mimeType || "audio/webm" });
           chunks = [];
+          if (window.__jarvisMuteEar) return;
           if (blob.size > 1500) {
             setLive("transcribiendo…");
-            const text = await transcribeBlob(blob);
-            if (text) {
-              setLive("te oí: " + text);
-              if (onPartial) onPartial(text, true);
-              onFinal(text);
+            const heard = await transcribeBlob(blob);
+            if (window.__jarvisMuteEar) return;
+            if (heard && heard.text) {
+              setLive("te oí: " + heard.text);
+              if (onPartial) onPartial(heard.text, true);
+              onFinal(heard.text, { low: heard.low });
             } else {
               setLive("");
             }
@@ -128,6 +145,18 @@ function createListener({ onFinal, onPartial, onError }) {
       const tick = async () => {
         if (!want) return;
         if (window.__jarvisMuteEar) {
+          if (recorder) {
+            const r = recorder;
+            recorder = null;
+            speaking = false;
+            chunks = [];
+            quietSince = 0;
+            try {
+              r.stop();
+            } catch {
+              /* drop the take that heard Jarvis */
+            }
+          }
           loop = setTimeout(tick, 80);
           return;
         }
@@ -154,6 +183,10 @@ function createListener({ onFinal, onPartial, onError }) {
 
   async function windowsLoop() {
     while (want && window.jarvis.windowsListen) {
+      if (window.__jarvisMuteEar) {
+        await new Promise((r) => setTimeout(r, 200));
+        continue;
+      }
       setLive("te oigo…");
       const res = await Promise.race([
         window.jarvis.windowsListen(8),
@@ -175,6 +208,7 @@ function createListener({ onFinal, onPartial, onError }) {
     rec.continuous = true;
     rec.interimResults = true;
     rec.onresult = (event) => {
+      if (window.__jarvisMuteEar) return;
       let final = "";
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -214,7 +248,7 @@ function createListener({ onFinal, onPartial, onError }) {
   async function startAlways() {
     want = true;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await openMic();
     } catch (err) {
       onError((err && err.name) || err.message || "mic");
       return;
@@ -267,3 +301,7 @@ function createListener({ onFinal, onPartial, onError }) {
 
 window.createListener = createListener;
 window.speechSupported = () => true;
+window.jarvisAudioConstraint = function jarvisAudioConstraint() {
+  const id = window.__jarvisMicId || "";
+  return id ? { deviceId: { exact: id } } : true;
+};

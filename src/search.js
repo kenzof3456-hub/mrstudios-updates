@@ -305,38 +305,83 @@ async function searchWeb(query, opts = {}) {
   return hits.slice(0, 8);
 }
 
-function formatSearchAnswer(query, results, lang = "es") {
-  if (!results.length) {
-    return say(
-      lang === "en"
-        ? `I searched several pages for «${query}» and nothing solid came back.`
-        : `Busqué varias páginas sobre «${query}» y no llegó nada sólido.`
-    );
+function clipFact(s) {
+  const t = String(s || "").replace(/\s+/g, " ").trim();
+  if (t.length <= 220) return t;
+  return t.slice(0, 217).replace(/\s+\S*$/, "").trim() + "…";
+}
+
+function factSentences(results, max) {
+  const out = [];
+  const seen = new Set();
+  for (const r of results || []) {
+    const source = [r.snippet, r.body].filter(Boolean).join(" ");
+    const parts = source.split(/(?<=[.!?])\s+/);
+    let took = 0;
+    for (const part of parts) {
+      const s = clipFact(part);
+      if (s.length < 24) continue;
+      const key = s.toLowerCase().slice(0, 90);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(/[.!?…]$/.test(s) ? s : s + ".");
+      took += 1;
+      if (out.length >= max || took >= 2) break;
+    }
+    if (out.length >= max) break;
   }
-  const blobs = results.flatMap((r) =>
-    [r.title, r.snippet, r.body]
-      .map((s) => String(s || "").replace(/\s+/g, " ").trim())
-      .filter((s) => s.length > 8)
-  );
-  const joined = blobs.join(" ");
-  const sentences = joined
-    .split(/(?<=[.!?])\s+/)
+  return out.slice(0, max);
+}
+
+function presentSearch(text, lang = "es", maxSentences = 4, maxLinks = 2) {
+  const raw = String(text || "").trim();
+  if (!raw) return "";
+  const urls = [];
+  const seen = new Set();
+  for (const m of raw.matchAll(/https?:\/\/[^\s)>\]]+/g)) {
+    const u = m[0].replace(/[.,;]+$/, "");
+    if (seen.has(u)) continue;
+    seen.add(u);
+    urls.push(u);
+    if (urls.length >= maxLinks) break;
+  }
+  const prose = raw
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/\b(Fuentes|Sources)\s*:\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  let sents = prose
+    .split(/(?<=[.!?…])\s+/)
     .map((s) => s.trim())
-    .filter((s, i, arr) => s.length > 20 && arr.indexOf(s) === i)
-    .slice(0, 10);
-  const body = sentences.length >= 1 ? sentences.join(" ") : blobs.slice(0, 5).join(" ");
-  const cites = results
-    .slice(0, 5)
-    .map((r) => r.url)
-    .filter(Boolean)
-    .join(" · ");
-  return say(
-    lang === "en"
-      ? `Combined from several public pages on «${query}»:`
-      : `Combiné varias páginas públicas sobre «${query}»:`,
-    body.slice(0, 2200),
-    cites ? (lang === "en" ? `Sources: ${cites}` : `Fuentes: ${cites}`) : ""
-  );
+    .filter((s) => s.length > 1 && !/^(fuentes|sources)\b/i.test(s));
+  if (!sents.length && prose) sents = [clipFact(prose)];
+  sents = sents.slice(0, maxSentences).map((s) => (s.length > 240 ? clipFact(s) : s));
+  const body = sents.join(" ");
+  if (!maxLinks || !urls.length) return body;
+  const label = lang === "en" ? "Sources" : "Fuentes";
+  return say(body, `${label}: ${urls.slice(0, maxLinks).join(" · ")}`);
+}
+
+function formatSearchAnswer(query, results, lang = "es") {
+  if (!results || !results.length) {
+    return lang === "en"
+      ? `I looked for «${query}» and nothing solid came back.`
+      : `Busqué «${query}» y no llegó nada sólido.`;
+  }
+  const facts = factSentences(results, 4);
+  const body =
+    facts.join(" ") ||
+    (lang === "en" ? `I found pages about «${query}».` : `Encontré páginas sobre «${query}».`);
+  const links = [];
+  const seen = new Set();
+  for (const r of results) {
+    if (!r || !r.url || seen.has(r.url)) continue;
+    seen.add(r.url);
+    links.push(r.url);
+    if (links.length >= 2) break;
+  }
+  const label = lang === "en" ? "Sources" : "Fuentes";
+  return links.length ? say(body, `${label}: ${links.join(" · ")}`) : body;
 }
 
 function packWebForLlm(results) {
@@ -353,6 +398,8 @@ function packWebForLlm(results) {
 module.exports = {
   searchWeb,
   formatSearchAnswer,
+  presentSearch,
+  factSentences,
   fetchText,
   fetchJson,
   readable,

@@ -7,9 +7,9 @@ const path = require("path");
 const { forSpeech } = require("./spoken");
 const { JARVIS_TTS } = require("./jarvis-voice");
 
-function cloudTts({ apiKey, baseUrl, text, voice, model, speed }) {
+function cloudTts({ apiKey, baseUrl, text, voice, model, speed, speech }) {
   if (!apiKey) return Promise.resolve(null);
-  const spoken = forSpeech(text);
+  const spoken = forSpeech(text, speech);
   if (!spoken) return Promise.resolve(null);
   const root = (baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
   const url = new URL(`${root}/audio/speech`);
@@ -55,8 +55,8 @@ function cloudTts({ apiKey, baseUrl, text, voice, model, speed }) {
   });
 }
 
-async function edgeTts(text, preferred) {
-  const spoken = forSpeech(text);
+async function edgeTts(text, preferred, speech) {
+  const spoken = forSpeech(text, speech);
   if (!spoken) return null;
   const voices = [];
   if (preferred) voices.push(preferred);
@@ -104,11 +104,11 @@ async function tryEdgeVoice(spoken, voice) {
   }
 }
 
-function sapiSpeak(text, voiceName) {
+function sapiSpeak(text, voiceName, speech) {
   if (process.platform !== "win32") {
     return Promise.resolve({ ok: false, reason: "not-windows" });
   }
-  const spoken = forSpeech(text).replace(/'/g, "''");
+  const spoken = forSpeech(text, speech).replace(/'/g, "''");
   if (!spoken) return Promise.resolve({ ok: true });
   const want = String(voiceName || "").replace(/'/g, "''");
   const script = `

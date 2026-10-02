@@ -17,6 +17,12 @@ const micHint = document.getElementById("mic-hint");
 const micHintTitle = document.getElementById("mic-hint-title");
 const micHintBody = document.getElementById("mic-hint-body");
 const micHintRetry = document.getElementById("mic-hint-retry");
+const micPick = document.getElementById("mic-pick");
+const gearBtn = document.getElementById("gear");
+const keyPanel = document.getElementById("key-panel");
+const apiKeyInput = document.getElementById("api-key");
+const apiKeySave = document.getElementById("api-key-save");
+const apiKeyState = document.getElementById("api-key-state");
 
 const history = [];
 let speaking = false;
@@ -30,6 +36,9 @@ let earWanted = true;
 let earBusy = false;
 let skipEarToggle = 0;
 let turnBusy = false;
+let needWake = true;
+let unmuteTimer = 0;
+const EAR_RESUME_MS = 400;
 const sendQueue = [];
 
 function showAttach(info) {
@@ -111,26 +120,46 @@ function setThinking(on) {
   }
 }
 
-async function talk(text) {
+function muteEar() {
   window.__jarvisMuteEar = true;
+  clearTimeout(unmuteTimer);
+}
+
+function scheduleUnmute() {
+  clearTimeout(unmuteTimer);
+  unmuteTimer = setTimeout(() => {
+    window.__jarvisMuteEar = false;
+  }, EAR_RESUME_MS);
+}
+
+async function talk(text, opts) {
+  const line = String(text || "").trim();
+  if (!line) return;
+  muteEar();
+  window.__jarvisLastSpoken = line;
   if (window.unlockAudio) await window.unlockAudio();
   setTalking(true);
   try {
     const result = await Promise.race([
-      window.speakOut(text, (amp, freq) => window.orbSetLevel && window.orbSetLevel(amp, freq)),
+      window.speakOut(line, (amp, freq) => window.orbSetLevel && window.orbSetLevel(amp, freq), opts),
       new Promise((r) => setTimeout(() => r({ ok: false, error: "tts-timeout" }), 12000)),
     ]);
+    if (result && result.spoken) window.__jarvisLastSpoken = result.spoken;
     const ok = result && (result.ok === true || typeof result === "string" && result !== "none");
     if (!ok) {
       const reason = (result && result.error) || "sin motor de voz";
-      retrySpeak = text;
+      retrySpeak = line;
       addMsg("jarvis", "no pude hablar: " + reason);
     } else {
       retrySpeak = "";
     }
   } finally {
     setTalking(false);
-    window.__jarvisMuteEar = false;
+    if (!(opts && opts.keepArmed)) {
+      needWake = true;
+      awaitCommand = false;
+    }
+    scheduleUnmute();
     applyOrb();
   }
 }
@@ -204,36 +233,91 @@ async function runTurn(job) {
   const reply = (res && res.reply) || hung.reply;
   addMsg("jarvis", reply);
   history.push({ role: "assistant", content: reply });
+  const toSay = (res && res.speak) || reply;
   if (res && res.language) {
     const stt = { es: "es-MX", en: "en-GB", pt: "pt-BR", fr: "fr-FR", de: "de-DE", it: "it-IT", ja: "ja-JP", zh: "zh-CN", ko: "ko-KR" };
     window.__jarvisSttLang = stt[res.language] || "es-MX";
   }
   if (res && res.voice) fillVoices().catch(() => {});
-  await talk(reply);
+  await talk(toSay, {
+    code: Boolean(res && (res.intent === "craft" || res.intent === "save_code")),
+    search: Boolean(res && (res.searched || res.intent === "tv")),
+  });
 }
 
-async function onHeard(finalText) {
-  if (speaking) return;
-  const parsed = await window.jarvis.parseWake(finalText);
+async function sayRepeat() {
+  const line = "¿puedes repetir?";
+  addMsg("jarvis", line);
+  history.push({ role: "assistant", content: line });
+  await talk(line);
+}
+
+async function onHeard(finalText, meta) {
+  if (speaking || window.__jarvisMuteEar) return;
+  const heard = String(finalText || "").trim();
+  if (!heard) return;
+  const low = Boolean(meta && meta.low);
+  let echo = false;
+  let junk = false;
+  let hearing = false;
+  try {
+    const gate = await window.jarvis.earCheck({
+      text: heard,
+      last: window.__jarvisLastSpoken || "",
+    });
+    echo = Boolean(gate && gate.echo);
+    junk = Boolean(gate && gate.junk);
+    hearing = Boolean(gate && gate.hearing);
+  } catch {
+    echo = false;
+  }
+  if (echo) return;
+  const parsed = await window.jarvis.parseWake(heard);
+  const taking = voiceMode === "ptt" || awaitCommand || !needWake;
+  let restJunk = false;
+  if (parsed.woke && parsed.rest) {
+    try {
+      const restGate = await window.jarvis.earCheck({ text: parsed.rest, last: "" });
+      restJunk = Boolean(restGate && restGate.junk);
+      if (restGate && restGate.hearing) hearing = true;
+    } catch {
+      restJunk = false;
+    }
+  }
+  if (hearing && !low) {
+    needWake = false;
+    awaitCommand = false;
+    enqueueSend(parsed.woke && parsed.rest ? parsed.rest : heard);
+    return;
+  }
+  if (low || junk || restJunk) {
+    if (parsed.woke || taking) await sayRepeat();
+    return;
+  }
   if (parsed.woke) {
     const line = await window.jarvis.wakeLine();
     addMsg("jarvis", line);
-    await talk(line);
+    history.push({ role: "assistant", content: line });
     if (parsed.rest) {
+      await talk(line, { keepArmed: true });
+      needWake = false;
       awaitCommand = false;
       applyOrb();
-      await enqueueSend(parsed.rest);
+      enqueueSend(parsed.rest);
     } else {
+      await talk(line, { keepArmed: true });
       awaitCommand = true;
-      ear.textContent = "ESCUCHANDO";
+      needWake = false;
+      if (ear) ear.textContent = "ESCUCHANDO";
       applyOrb();
     }
     return;
   }
-  if (awaitCommand || voiceMode === "ptt" || voiceMode === "always") {
+  if (taking) {
     awaitCommand = false;
+    needWake = false;
     applyOrb();
-    enqueueSend(finalText);
+    enqueueSend(heard);
   }
 }
 
@@ -265,9 +349,17 @@ async function armMic() {
     return false;
   }
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audio = window.jarvisAudioConstraint ? window.jarvisAudioConstraint() : true;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio });
+    } catch (err) {
+      if (!window.__jarvisMicId) throw err;
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
     stream.getTracks().forEach((t) => t.stop());
     hideMicHint();
+    fillMics().catch(() => {});
     return true;
   } catch (err) {
     const name = (err && err.name) || "";
@@ -326,6 +418,48 @@ async function enableEar() {
   }
 }
 
+async function fillMics() {
+  if (!micPick || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
+  const current = window.__jarvisMicId || "";
+  micPick.dataset.filling = "1";
+  try {
+    micPick.innerHTML = "";
+    const def = document.createElement("option");
+    def.value = "";
+    def.textContent = "Predeterminado";
+    micPick.appendChild(def);
+    inputs.forEach((d, i) => {
+      const o = document.createElement("option");
+      o.value = d.deviceId;
+      o.textContent = d.label || "Micrófono " + (i + 1);
+      micPick.appendChild(o);
+    });
+    const has = [...micPick.options].some((o) => o.value === current);
+    micPick.value = has ? current : "";
+    if (!has) window.__jarvisMicId = "";
+  } finally {
+    delete micPick.dataset.filling;
+  }
+}
+
+async function useMic(deviceId) {
+  window.__jarvisMicId = deviceId || "";
+  if (window.jarvis.setMic) {
+    try {
+      await window.jarvis.setMic(window.__jarvisMicId);
+    } catch {
+      /* keep the choice in this window */
+    }
+  }
+  if (voiceMode === "always") {
+    if (listener) listener.stop();
+    listener = null;
+    voiceMode = "off";
+    await enableEar();
+  }
+}
+
 async function fillVoices() {
   if (!voicePick || !window.jarvis.voices) return;
   voicePick.dataset.filling = "1";
@@ -375,8 +509,11 @@ async function boot() {
     if (pill) pill.textContent = onlineLabel;
     window.__jarvisIsWindows = Boolean(s.isWindows);
     window.__jarvisSttLang = (s.profile && s.profile.locale) || "es-MX";
+    window.__jarvisMicId = (s.profile && s.profile.micDeviceId) || "";
+    if (apiKeyState) apiKeyState.textContent = s.hasLlm ? "Clave guardada en este PC." : "Sin clave. Puedes pegarla aquí.";
     if (window.waitVoices) await window.waitVoices();
     await fillVoices();
+    await fillMics();
     addMsg("jarvis", s.greeting);
     retrySpeak = s.greeting;
     talk(s.greeting).catch(() => {});
@@ -415,6 +552,52 @@ attachBtn.addEventListener("click", async () => {
 });
 
 attachClear.addEventListener("click", () => hideAttach());
+
+if (micPick) {
+  micPick.addEventListener("change", async () => {
+    if (micPick.dataset.filling) return;
+    await useMic(micPick.value || "");
+    await fillMics();
+  });
+}
+
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener("devicechange", () => {
+    fillMics().catch(() => {});
+  });
+}
+
+if (gearBtn && keyPanel) {
+  gearBtn.addEventListener("click", () => {
+    keyPanel.hidden = !keyPanel.hidden;
+    if (!keyPanel.hidden && apiKeyInput) apiKeyInput.focus();
+  });
+}
+
+if (apiKeyInput && apiKeySave) {
+  apiKeyInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      apiKeySave.click();
+    }
+  });
+}
+
+if (apiKeySave) {
+  apiKeySave.addEventListener("click", async () => {
+    const key = apiKeyInput ? apiKeyInput.value.trim() : "";
+    try {
+      const saved = await window.jarvis.setApiKey(key);
+      if (apiKeyInput) apiKeyInput.value = "";
+      if (apiKeyState) {
+        apiKeyState.textContent =
+          saved && saved.hasLlm ? "Clave guardada en este PC." : "Sin clave. Jarvis sigue en local.";
+      }
+    } catch (err) {
+      if (apiKeyState) apiKeyState.textContent = "No pude guardar la clave.";
+    }
+  });
+}
 
 if (voicePick) {
   voicePick.addEventListener("change", async () => {

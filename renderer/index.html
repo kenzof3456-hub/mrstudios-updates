@@ -43,9 +43,27 @@
       <button type="button" id="attach-clear" class="ghost-btn" title="Quitar">×</button>
     </div>
 
+    <div id="key-panel" class="key-panel" hidden>
+      <p class="key-title">Clave OpenAI</p>
+      <input
+        id="api-key"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Pega OPENAI_API_KEY"
+      />
+      <button type="button" id="api-key-save" class="ghost-btn on">Guardar</button>
+      <p id="api-key-state"></p>
+    </div>
+
     <footer class="bar">
       <button type="button" id="mic-always" class="ghost-btn">Oído</button>
+      <label class="mic-wrap">
+        Micrófono
+        <select id="mic-pick" title="Micrófono"></select>
+      </label>
       <button type="button" id="mic-ptt" class="ghost-btn">PTT</button>
+      <button type="button" id="gear" class="ghost-btn" title="Clave OpenAI">⚙</button>
       <form id="form" class="composer">
         <button type="button" id="attach" class="ghost-btn attach-btn">Adjuntar</button>
         <input
