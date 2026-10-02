@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; media-src 'self' blob: data: mediastream:; connect-src 'self' https://www.google.com https://www.gstatic.com https://www.googleapis.com https://www.google.es wss://www.google.com wss://www.gstatic.com"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>J.A.R.V.I.S.</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-mode="idle">
+    <canvas id="orb" aria-hidden="true"></canvas>
+
+    <header class="chrome">
+      <span class="brand">J.A.R.V.I.S.</span>
+      <span id="status-pill" class="ghost">EN LÍNEA</span>
+      <span id="ear" class="ghost">OÍDO OFF</span>
+      <label class="voice-wrap">
+        Voz
+        <select id="voice-pick" title="Voz de Jarvis"></select>
+      </label>
+    </header>
+
+    <audio id="jarvis-voice" preload="auto" playsinline></audio>
+
+    <p id="caption" class="caption"></p>
+    <p id="live-words" class="live-words" aria-live="polite"></p>
+
+    <div id="mic-hint" class="mic-hint" hidden>
+      <p class="mic-hint-title" id="mic-hint-title">Jarvis no oye el micrófono</p>
+      <p class="mic-hint-body" id="mic-hint-body"></p>
+      <button type="button" id="mic-hint-retry" class="ghost-btn on">Reintentar micrófono</button>
+      <p class="mic-hint-type">Puedes seguir escribiendo abajo. El teclado no se bloquea.</p>
+    </div>
+
+    <aside id="log" class="log" aria-live="polite"></aside>
+
+    <div id="attach-preview" class="attach-preview" hidden>
+      <img id="attach-thumb" alt="" />
+      <span id="attach-label"></span>
+      <button type="button" id="attach-clear" class="ghost-btn" title="Quitar">×</button>
+    </div>
+
+    <div id="key-panel" class="key-panel" hidden>
+      <p class="key-title">Clave OpenAI</p>
+      <input
+        id="api-key"
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Pega OPENAI_API_KEY"
+      />
+      <button type="button" id="api-key-save" class="ghost-btn on">Guardar</button>
+      <p id="api-key-state"></p>
+    </div>
+
+    <footer class="bar">
+      <button type="button" id="mic-always" class="ghost-btn">Oído</button>
+      <label class="mic-wrap">
+        Micrófono
+        <select id="mic-pick" title="Micrófono"></select>
+      </label>
+      <button type="button" id="mic-ptt" class="ghost-btn">PTT</button>
+      <button type="button" id="gear" class="ghost-btn" title="Clave OpenAI">⚙</button>
+      <form id="form" class="composer">
+        <button type="button" id="attach" class="ghost-btn attach-btn">Adjuntar</button>
+        <input
+          id="input"
+          type="text"
+          autocomplete="off"
+          placeholder="«Jarvis» o escribe…"
+        />
+        <button type="submit" id="send">→</button>
+      </form>
+      <details class="more">
+        <summary>más</summary>
+        <div class="chips">
+          <button type="button" data-q="qué echan en Japón">TV Japón</button>
+          <button type="button" data-q="házmelo">Házmelo</button>
+          <button type="button" data-q="escribe un bot de Discord en javascript">Bot Discord</button>
+          <button type="button" data-q="script de Blender que crea un cubo y exporta glTF">Blender</button>
+          <button type="button" data-q="recuerda que uso Discord por las tardes">Recuerda</button>
+          <button type="button" data-q="¿Qué hora es?">Hora</button>
+          <button type="button" data-q="¿Quién soy?">Perfil</button>
+          <button type="button" data-q="¿Qué sabes de mí?">Memoria</button>
+          <button type="button" data-q="mira mi pantalla">Mira pantalla</button>
+          <button type="button" data-q="manda un mensaje a mamá por WhatsApp que ya voy">Mensaje</button>
+          <button type="button" data-q="mira esto">Mira esto</button>
+          <button type="button" data-q="quién es esta persona">Quién es</button>
+          <button type="button" data-q="qué es esto">Qué es esto</button>
+          <button type="button" data-q="Enciende la cámara de Discord">Discord</button>
+          <button type="button" data-q="habla con voz de Jorge">Voz Jorge</button>
+          <button type="button" data-q="lista las voces">Voces</button>
+        </div>
+      </details>
+    </footer>
+
+    <script src="orb.js"></script>
+    <script src="speak.js"></script>
+    <script src="listen.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

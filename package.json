@@ -1,0 +1,46 @@
+{
+  "name": "jarvis",
+  "productName": "Jarvis",
+  "version": "1.0.0",
+  "description": "Jarvis — asistente de escritorio para Señor (Luis) en Windows",
+  "main": "main.js",
+  "author": "MRstudios",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "test": "node src/intents.test.js && node src/memory.test.js && node src/brain.memory.test.js && node src/wake.test.js && node src/sight.test.js && node src/send-parse.test.js && node src/messenger.test.js && node src/attach.test.js && node src/jarvis-voice.test.js && node src/voices.test.js && node src/lang.test.js && node src/craft.test.js && node src/agency.test.js && node src/profile.test.js && node src/faces.test.js && node src/mustship.test.js && node src/tv.test.js && node src/plan.test.js && node src/brain.llm.test.js && node src/search.test.js && node src/stt.test.js && node src/ear.test.js && node src/secrets.test.js",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "node-edge-tts": "^1.2.10"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mrstudios.jarvis",
+    "productName": "Jarvis",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Jarvis-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

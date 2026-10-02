@@ -1,0 +1,404 @@
+:root {
+  --bg: #02050a;
+  --cyan: #4ecbff;
+  --text: #c9e7f2;
+  --muted: #6a8a99;
+  --jarvis: #9be8ff;
+  --rabbit: #e6d59a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #02050a;
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#orb {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.chrome {
+  position: fixed;
+  top: 16px;
+  left: 20px;
+  right: 20px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.voice-wrap {
+  margin-left: auto;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+#voice-pick {
+  max-width: min(280px, 42vw);
+  background: rgba(8, 16, 28, 0.88);
+  border: 1px solid rgba(78, 203, 255, 0.28);
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.brand {
+  letter-spacing: 0.42em;
+  font-size: 12px;
+  color: rgba(78, 203, 255, 0.7);
+}
+
+.ghost {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+#status-pill.hablando {
+  color: var(--cyan);
+}
+
+.caption {
+  position: fixed;
+  left: 12%;
+  right: 12%;
+  bottom: 22%;
+  z-index: 2;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.live-words {
+  position: fixed;
+  left: 10%;
+  right: 10%;
+  top: 58%;
+  z-index: 3;
+  text-align: center;
+  font-size: 26px;
+  line-height: 1.35;
+  color: var(--cyan);
+  text-shadow: 0 0 18px rgba(78, 203, 255, 0.35);
+  pointer-events: none;
+  min-height: 1.4em;
+}
+  position: fixed;
+  left: 12%;
+  right: 12%;
+  bottom: 22%;
+  z-index: 2;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--jarvis);
+  text-shadow: 0 0 18px rgba(78, 203, 255, 0.35);
+  min-height: 1.4em;
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+
+.log {
+  position: fixed;
+  right: 16px;
+  top: 48px;
+  bottom: 110px;
+  width: min(280px, 28vw);
+  z-index: 2;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+  opacity: 0.55;
+  mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent);
+}
+
+.log:hover {
+  opacity: 0.95;
+}
+
+.msg {
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  max-width: 100%;
+}
+
+.msg.jarvis {
+  color: var(--jarvis);
+}
+
+.msg.user {
+  color: var(--rabbit);
+  text-align: right;
+}
+
+.who {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  opacity: 0.5;
+  margin-bottom: 2px;
+}
+
+.bar {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mic-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--cyan);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+#mic-pick {
+  max-width: 168px;
+  min-width: 112px;
+  background: rgba(8, 16, 28, 0.92);
+  border: 1px solid rgba(78, 203, 255, 0.55);
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+#gear {
+  color: var(--cyan);
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.key-panel {
+  position: fixed;
+  left: 16px;
+  bottom: 64px;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: min(460px, calc(100vw - 32px));
+  padding: 12px;
+  background: rgba(4, 10, 18, 0.96);
+  border: 1px solid rgba(78, 203, 255, 0.45);
+}
+
+.key-panel[hidden] {
+  display: none;
+}
+
+.key-title {
+  margin: 0;
+  width: 100%;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+}
+
+#api-key {
+  flex: 1;
+  min-width: 180px;
+  background: rgba(8, 16, 28, 0.92);
+  border: 1px solid rgba(78, 203, 255, 0.35);
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+#api-key-state {
+  margin: 0;
+  width: 100%;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.attach-preview {
+  position: fixed;
+  left: 16px;
+  bottom: 62px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+  background: rgba(4, 10, 18, 0.92);
+  border: 1px solid rgba(78, 203, 255, 0.28);
+  max-width: min(420px, 70vw);
+}
+
+.attach-preview[hidden] {
+  display: none;
+}
+
+#attach-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  background: #0a1520;
+  display: none;
+}
+
+#attach-thumb.show {
+  display: block;
+}
+
+#attach-label {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-btn {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.ghost-btn,
+.more summary,
+#send {
+  background: transparent;
+  border: 1px solid rgba(78, 203, 255, 0.25);
+  color: var(--muted);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.ghost-btn.on {
+  color: #031018;
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.mic-hint {
+  position: fixed;
+  left: 12%;
+  right: 12%;
+  top: 18%;
+  z-index: 8;
+  padding: 22px 26px;
+  background: rgba(8, 14, 22, 0.94);
+  border: 2px solid var(--cyan);
+  color: #e8f7ff;
+  text-align: center;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 40px rgba(78, 203, 255, 0.25);
+}
+
+.mic-hint-title {
+  margin: 0 0 10px;
+  font-size: 22px;
+  color: var(--cyan);
+}
+
+.mic-hint-body {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #d7eef8;
+}
+
+.mic-hint-type {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.composer {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+}
+
+#input {
+  flex: 1;
+  background: rgba(8, 16, 28, 0.72);
+  border: 1px solid rgba(78, 203, 255, 0.22);
+  color: var(--text);
+  padding: 8px 12px;
+  font: inherit;
+  outline: none;
+}
+
+#send {
+  min-width: 40px;
+  color: var(--cyan);
+}
+
+.more {
+  position: relative;
+}
+
+.more summary {
+  list-style: none;
+}
+
+.more summary::-webkit-details-marker {
+  display: none;
+}
+
+.chips {
+  position: absolute;
+  right: 0;
+  bottom: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  max-height: min(420px, 58vh);
+  overflow-y: auto;
+  background: rgba(4, 10, 18, 0.92);
+  border: 1px solid rgba(78, 203, 255, 0.2);
+}
+
+.chips button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.chips button:hover {
+  color: var(--cyan);
+}

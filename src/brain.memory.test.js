@@ -1,0 +1,100 @@
+const assert = require("assert");
+const os = require("os");
+const path = require("path");
+const fs = require("fs");
+const { createMemory } = require("./memory");
+const { handleTurn } = require("./brain");
+const { loadProfile } = require("./profile");
+
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "jarvis-brain-"));
+const memory = createMemory(path.join(dir, "memory.json"));
+const profile = loadProfile(dir);
+const llm = { apiKey: "", baseUrl: "", model: "" };
+
+(async () => {
+  const a = await handleTurn({
+    text: "recuerda que uso Discord por las tardes",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(a.intent, "remember");
+  assert.match(a.reply, /Anotado|Noted/);
+  assert.match(a.reply, /\n/);
+
+  const b = await handleTurn({
+    text: "qué sabes de mí",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(b.intent, "recall");
+  assert.match(b.reply, /Discord/);
+
+  const who = await handleTurn({
+    text: "quién soy",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(who.intent, "profile");
+  assert.match(who.reply, /Señor/);
+  assert.doesNotMatch(who.reply, /Rabbit/);
+
+  const hi = await handleTurn({
+    text: "hola",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(hi.intent, "hello");
+  assert.strictEqual(hi.reply, "Hola, Señor.");
+  const hello = await handleTurn({
+    text: "hello",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(hello.intent, "hello");
+  assert.strictEqual(hello.reply, "Hello, Señor.");
+
+  const holaJarvis = await handleTurn({
+    text: "hola Jarvis",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(holaJarvis.intent, "hello");
+  assert.strictEqual(holaJarvis.reply, "Hola, Señor.");
+  assert.doesNotMatch(holaJarvis.reply, /hora|Adjuntar|Rabbit|UTC/i);
+
+  const jarvisHi = await handleTurn({
+    text: "Jarvis hello",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(jarvisHi.intent, "hello");
+  assert.strictEqual(jarvisHi.reply, "Hello, Señor.");
+
+  const c = await handleTurn({
+    text: "olvida Discord",
+    history: [],
+    profile,
+    llm,
+    memory,
+  });
+  assert.strictEqual(c.intent, "forget");
+  assert.strictEqual(memory.list().length, 0);
+  console.log("brain memory ok");
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
