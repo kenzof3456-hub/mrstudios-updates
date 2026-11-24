@@ -1,0 +1,5 @@
+node_modules/
+.env
+aternos-cookies.json
+*.log
+.DS_Store
